@@ -49,3 +49,7 @@ logs/
 htmlcov/
 .pytest_cache/
 coverage/
+test.db
+
+# Claude
+.claude/
