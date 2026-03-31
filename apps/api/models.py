@@ -10,9 +10,22 @@ from sqlalchemy import (
     JSON,
     String,
     Text,
+    TypeDecorator,
 )
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
+
+class UUIDString(TypeDecorator):
+    impl = String(36)
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is not None:
+            return str(value)
+        return value
+
+    def process_result_value(self, value, dialect):
+        return value
 
 from database import Base
 
@@ -28,7 +41,7 @@ def new_uuid():
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    id = Column(UUIDString, primary_key=True, default=new_uuid)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password = Column(String(255), nullable=False)
     plan_type = Column(
@@ -45,8 +58,8 @@ class User(Base):
 class Project(Base):
     __tablename__ = "projects"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    id = Column(UUIDString, primary_key=True, default=new_uuid)
+    user_id = Column(UUIDString, ForeignKey("users.id"), nullable=True)
     image_url = Column(Text, nullable=False)
     status = Column(
         Enum("pending", "processing", "done", "failed", name="project_status_enum"),
@@ -63,9 +76,9 @@ class Project(Base):
 class Layer(Base):
     __tablename__ = "layers"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    id = Column(UUIDString, primary_key=True, default=new_uuid)
     project_id = Column(
-        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False
+        UUIDString, ForeignKey("projects.id"), nullable=False
     )
     type = Column(
         Enum("text", "button", "image", "icon", "card", "background", name="layer_type_enum"),
@@ -82,9 +95,9 @@ class Layer(Base):
 class Job(Base):
     __tablename__ = "jobs"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    id = Column(UUIDString, primary_key=True, default=new_uuid)
     project_id = Column(
-        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False
+        UUIDString, ForeignKey("projects.id"), nullable=False
     )
     status = Column(
         Enum(
@@ -111,9 +124,9 @@ class Job(Base):
 class Billing(Base):
     __tablename__ = "billing"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    id = Column(UUIDString, primary_key=True, default=new_uuid)
     user_id = Column(
-        UUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False
+        UUIDString, ForeignKey("users.id"), unique=True, nullable=False
     )
     plan = Column(
         Enum("free", "basic", "pro", name="billing_plan_enum"),

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import upload, project, download, usage
+from routers import auth, billing, upload, project, download, usage
 
 app = FastAPI(
     title="UI2PSD Studio API",
@@ -17,6 +17,8 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
 )
 
+app.include_router(auth.router)
+app.include_router(billing.router)
 app.include_router(upload.router)
 app.include_router(project.router)
 app.include_router(download.router)
