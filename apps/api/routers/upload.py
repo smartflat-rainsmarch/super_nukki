@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from config import settings
 from database import get_db
-from models import Project
+from models import Job, Project
 from schemas import UploadResponse
 
 router = APIRouter(prefix="/api", tags=["upload"])
@@ -81,6 +81,16 @@ async def upload_image(
     db.add(project)
     db.commit()
     db.refresh(project)
+
+    job = Job(project_id=project.id, status="queued")
+    db.add(job)
+    db.commit()
+
+    try:
+        from worker import process_image
+        process_image.delay(str(project.id), str(file_path))
+    except Exception:
+        pass  # Worker unavailable (e.g., test environment)
 
     return UploadResponse(
         project_id=project.id,
