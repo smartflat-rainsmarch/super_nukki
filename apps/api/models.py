@@ -137,3 +137,32 @@ class Billing(Base):
     reset_date = Column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User", back_populates="billing")
+
+
+class Team(Base):
+    __tablename__ = "teams"
+
+    id = Column(UUIDString, primary_key=True, default=new_uuid)
+    name = Column(String(100), nullable=False)
+    owner_id = Column(UUIDString, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    owner = relationship("User", foreign_keys=[owner_id])
+    members = relationship("TeamMember", back_populates="team")
+
+
+class TeamMember(Base):
+    __tablename__ = "team_members"
+
+    id = Column(UUIDString, primary_key=True, default=new_uuid)
+    team_id = Column(UUIDString, ForeignKey("teams.id"), nullable=False)
+    user_id = Column(UUIDString, ForeignKey("users.id"), nullable=False)
+    role = Column(
+        Enum("owner", "admin", "member", name="team_role_enum"),
+        default="member",
+        nullable=False,
+    )
+    joined_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    team = relationship("Team", back_populates="members")
+    user = relationship("User")

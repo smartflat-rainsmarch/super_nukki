@@ -14,6 +14,13 @@ interface UsageInfo {
   reset_date: string | null;
 }
 
+interface ProjectItem {
+  id: string;
+  image_url: string;
+  status: string;
+  created_at: string | null;
+}
+
 const PLAN_LABELS: Record<string, string> = {
   free: "무료",
   basic: "일반 ($39/월)",
@@ -23,6 +30,7 @@ const PLAN_LABELS: Record<string, string> = {
 export default function MyPage() {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [usage, setUsage] = useState<UsageInfo | null>(null);
+  const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,11 +48,14 @@ export default function MyPage() {
       }
       setUser(me);
 
-      const res = await fetch(`${API_BASE}/api/usage`, {
-        headers: authHeaders(),
-      });
-      if (res.ok) {
-        setUsage(await res.json());
+      const [usageRes, projectsRes] = await Promise.all([
+        fetch(`${API_BASE}/api/usage`, { headers: authHeaders() }),
+        fetch(`${API_BASE}/api/projects`, { headers: authHeaders() }),
+      ]);
+      if (usageRes.ok) setUsage(await usageRes.json());
+      if (projectsRes.ok) {
+        const data = await projectsRes.json();
+        setProjects(data.projects ?? []);
       }
 
       setLoading(false);
@@ -99,6 +110,43 @@ export default function MyPage() {
               리셋: {new Date(usage.reset_date).toLocaleDateString("ko-KR")}
             </p>
           )}
+        </div>
+      )}
+
+      {projects.length > 0 && (
+        <div className="mb-6 rounded-xl bg-white p-6 shadow">
+          <h2 className="mb-3 text-lg font-semibold">작업 이력</h2>
+          <div className="space-y-2">
+            {projects.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3"
+              >
+                <div>
+                  <Link
+                    href={`/project/${p.id}`}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    {p.id.slice(0, 8)}...
+                  </Link>
+                  <span className={`ml-2 rounded px-2 py-0.5 text-xs ${
+                    p.status === "done"
+                      ? "bg-green-100 text-green-700"
+                      : p.status === "failed"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-yellow-100 text-yellow-700"
+                  }`}>
+                    {p.status}
+                  </span>
+                </div>
+                <span className="text-xs text-gray-400">
+                  {p.created_at
+                    ? new Date(p.created_at).toLocaleDateString("ko-KR")
+                    : ""}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
