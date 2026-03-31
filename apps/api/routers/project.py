@@ -4,8 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from auth import get_current_user
 from database import get_db
-from models import Job, Layer, Project
+from models import Job, Layer, Project, User
 
 router = APIRouter(prefix="/api", tags=["project"])
 
@@ -70,6 +71,7 @@ async def get_project_result(project_id: str, db: Session = Depends(get_db)):
         "image_url": project.image_url,
         "status": project.status,
         "psd_url": psd_url,
+        "notice": "이 결과는 AI가 생성한 편집 가능한 초안입니다. 완벽한 복원을 보장하지 않습니다.",
         "layers": [
             {
                 "id": str(l.id),
@@ -77,6 +79,7 @@ async def get_project_result(project_id: str, db: Session = Depends(get_db)):
                 "position": l.position,
                 "text_content": l.text_content,
                 "z_index": l.z_index,
+                "layer_kind": "editable" if l.type == "text" else "raster",
             }
             for l in layers
         ],
