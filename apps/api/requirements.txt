@@ -10,3 +10,5 @@ python-multipart==0.0.19
 Pillow==11.1.0
 pydantic==2.10.4
 pydantic-settings==2.7.1
+opencv-python-headless==4.10.0.84
+numpy>=1.26.0
