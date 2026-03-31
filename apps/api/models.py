@@ -43,12 +43,16 @@ class User(Base):
 
     id = Column(UUIDString, primary_key=True, default=new_uuid)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    password = Column(String(255), nullable=False)
+    password = Column(String(255), nullable=True)  # nullable for social login
     plan_type = Column(
         Enum("free", "basic", "pro", name="plan_type_enum"),
         default="free",
         nullable=False,
     )
+    auth_provider = Column(String(20), default="email", nullable=False)
+    provider_id = Column(String(255), nullable=True)
+    name = Column(String(100), nullable=True)
+    profile_image = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     projects = relationship("Project", back_populates="user")

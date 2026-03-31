@@ -15,13 +15,23 @@ def _require_env(key: str, default_for_dev: str) -> str:
 
 class Settings(BaseSettings):
     database_url: str = _require_env(
-        "DATABASE_URL", "postgresql://ui2psd:devpassword@localhost:5432/ui2psd"
+        "DATABASE_URL", "sqlite:///./ui2psd_dev.db"
     )
     redis_url: str = _require_env("REDIS_URL", "redis://localhost:6379/0")
     storage_path: str = "./storage"
     max_upload_size_mb: int = 20
     max_upload_chunk_size: int = 1024 * 1024
     allowed_extensions: set[str] = {"png", "jpg", "jpeg", "webp"}
+
+    # Google OAuth
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:3000/auth/callback?provider=google"
+
+    # Kakao OAuth
+    kakao_client_id: str = ""
+    kakao_client_secret: str = ""
+    kakao_redirect_uri: str = "http://localhost:3000/auth/callback?provider=kakao"
 
     model_config = ConfigDict(env_file=".env")
 

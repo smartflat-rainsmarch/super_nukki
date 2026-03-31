@@ -39,6 +39,12 @@ app.include_router(usage.router)
 register_error_handlers(app)
 
 
+@app.on_event("startup")
+def on_startup():
+    from database import Base, _get_engine
+    Base.metadata.create_all(bind=_get_engine())
+
+
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}

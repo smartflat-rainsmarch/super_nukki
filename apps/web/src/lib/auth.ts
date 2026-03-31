@@ -6,12 +6,18 @@ export interface AuthResponse {
   user_id: string;
   email: string;
   plan_type: string;
+  name: string | null;
+  profile_image: string | null;
+  auth_provider: string;
 }
 
 export interface UserInfo {
   id: string;
   email: string;
   plan_type: string;
+  name: string | null;
+  profile_image: string | null;
+  auth_provider: string;
 }
 
 export function getToken(): string | null {
@@ -32,6 +38,8 @@ export function authHeaders(): Record<string, string> {
   if (!token) return {};
   return { Authorization: `Bearer ${token}` };
 }
+
+// --- Email Auth ---
 
 export async function register(email: string, password: string): Promise<AuthResponse> {
   const res = await fetch(`${API_BASE}/api/auth/register`, {
@@ -66,6 +74,42 @@ export async function login(email: string, password: string): Promise<AuthRespon
   setToken(data.access_token);
   return data;
 }
+
+// --- Social Auth ---
+
+export async function getGoogleLoginUrl(): Promise<string> {
+  const res = await fetch(`${API_BASE}/api/auth/google/url`);
+  const data = await res.json();
+  return data.url;
+}
+
+export async function getKakaoLoginUrl(): Promise<string> {
+  const res = await fetch(`${API_BASE}/api/auth/kakao/url`);
+  const data = await res.json();
+  return data.url;
+}
+
+export async function handleOAuthCallback(
+  code: string,
+  provider: string,
+): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE}/api/auth/${provider}/callback`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "OAuth login failed" }));
+    throw new Error(err.detail ?? "OAuth login failed");
+  }
+
+  const data: AuthResponse = await res.json();
+  setToken(data.access_token);
+  return data;
+}
+
+// --- User ---
 
 export async function getMe(): Promise<UserInfo | null> {
   const token = getToken();

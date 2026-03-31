@@ -14,7 +14,10 @@ def _get_engine():
     global _engine
     if _engine is None:
         from config import settings
-        _engine = create_engine(settings.database_url)
+        connect_args = {}
+        if settings.database_url.startswith("sqlite"):
+            connect_args = {"check_same_thread": False}
+        _engine = create_engine(settings.database_url, connect_args=connect_args)
     return _engine
 
 
