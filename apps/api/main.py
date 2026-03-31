@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from error_handlers import register_error_handlers
-from routers import admin, assets, auth, batch, billing, projects_list, teams, upload, project, download, usage
+from routers import admin, assets, auth, batch, billing, export, projects_list, teams, upload, project, download, usage
 
 app = FastAPI(
     title="UI2PSD Studio API",
@@ -23,6 +23,7 @@ app.include_router(assets.router)
 app.include_router(auth.router)
 app.include_router(batch.router)
 app.include_router(billing.router)
+app.include_router(export.router)
 app.include_router(projects_list.router)
 app.include_router(teams.router)
 app.include_router(upload.router)
