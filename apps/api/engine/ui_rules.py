@@ -13,17 +13,26 @@ class UIRegion:
     y_end_ratio: float
 
 
-UI_REGIONS = [
+MOBILE_REGIONS = [
     UIRegion("status_bar", 0.0, 0.05),
     UIRegion("header", 0.05, 0.15),
     UIRegion("content", 0.15, 0.85),
     UIRegion("bottom_nav", 0.85, 1.0),
 ]
 
+DESKTOP_REGIONS = [
+    UIRegion("header", 0.0, 0.10),
+    UIRegion("content", 0.10, 0.90),
+    UIRegion("footer", 0.90, 1.0),
+]
 
-def classify_region(y: int, h: int, image_h: int) -> str:
+UI_REGIONS = MOBILE_REGIONS  # default
+
+
+def classify_region(y: int, h: int, image_h: int, layout_type: str = "mobile_portrait") -> str:
     center_y = (y + h / 2) / image_h
-    for region in UI_REGIONS:
+    regions = DESKTOP_REGIONS if layout_type == "desktop" else MOBILE_REGIONS
+    for region in regions:
         if region.y_start_ratio <= center_y <= region.y_end_ratio:
             return region.name
     return "content"

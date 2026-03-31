@@ -19,12 +19,14 @@ interface ProjectResult {
   image_url: string;
   status: string;
   psd_url: string | null;
+  notice: string | null;
   layers: Array<{
     id: string;
     type: string;
     position: Record<string, number> | null;
     text_content: string | null;
     z_index: number;
+    layer_kind: "editable" | "raster";
   }>;
 }
 
@@ -69,11 +71,11 @@ export default function ProjectPage() {
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(() => {
-      if (status?.status !== "done" && status?.status !== "failed") {
-        fetchStatus();
-      }
-    }, 2000);
+  }, [fetchStatus]);
+
+  useEffect(() => {
+    if (status?.status === "done" || status?.status === "failed") return;
+    const interval = setInterval(fetchStatus, 2000);
     return () => clearInterval(interval);
   }, [fetchStatus, status?.status]);
 
@@ -126,12 +128,25 @@ export default function ProjectPage() {
 
       {isDone && result && (
         <div className="space-y-6">
+          {/* Notice */}
+          {result.notice && (
+            <div className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              {result.notice}
+            </div>
+          )}
+
           <div className="flex gap-4">
             <a
               href={`${API_BASE}/api/download/${id}`}
               className="rounded-lg bg-blue-600 px-6 py-3 text-white transition hover:bg-blue-700"
             >
               PSD 다운로드
+            </a>
+            <a
+              href={`/project/${id}/edit`}
+              className="rounded-lg border border-gray-300 px-6 py-3 text-gray-700 transition hover:bg-gray-50"
+            >
+              레이어 편집
             </a>
             <a
               href="/upload"
@@ -153,6 +168,13 @@ export default function ProjectPage() {
                     <div>
                       <span className="mr-2 rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
                         {layer.type}
+                      </span>
+                      <span className={`mr-2 rounded px-2 py-0.5 text-xs ${
+                        layer.layer_kind === "editable"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-gray-100 text-gray-500"
+                      }`}>
+                        {layer.layer_kind === "editable" ? "편집가능" : "래스터"}
                       </span>
                       {layer.text_content && (
                         <span className="text-sm text-gray-600">

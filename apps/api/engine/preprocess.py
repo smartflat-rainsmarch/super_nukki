@@ -6,16 +6,42 @@ import numpy as np
 from PIL import Image
 
 
+class LayoutType:
+    MOBILE_PORTRAIT = "mobile_portrait"
+    MOBILE_LANDSCAPE = "mobile_landscape"
+    TABLET = "tablet"
+    DESKTOP = "desktop"
+    UNKNOWN = "unknown"
+
+
 @dataclass(frozen=True)
 class PreprocessResult:
     image: np.ndarray
     original_size: tuple[int, int]
     processed_size: tuple[int, int]
     scale_factor: float
+    layout_type: str = LayoutType.UNKNOWN
 
 
 MAX_DIMENSION = 2048
 TARGET_MIN_DIMENSION = 640
+
+
+def detect_layout_type(width: int, height: int) -> str:
+    aspect = width / max(height, 1)
+
+    if aspect < 0.7:
+        return LayoutType.MOBILE_PORTRAIT
+    elif aspect < 1.0:
+        if max(width, height) > 1200:
+            return LayoutType.TABLET
+        return LayoutType.MOBILE_LANDSCAPE
+    elif aspect < 1.5:
+        if width >= 1024:
+            return LayoutType.TABLET
+        return LayoutType.MOBILE_LANDSCAPE
+    else:
+        return LayoutType.DESKTOP
 
 
 def load_image(path: str | Path) -> np.ndarray:
@@ -84,6 +110,8 @@ def preprocess(image_path: str | Path) -> PreprocessResult:
     image = load_image(image_path)
     original_h, original_w = image.shape[:2]
 
+    layout_type = detect_layout_type(original_w, original_h)
+
     cropped = detect_device_frame(image)
     if cropped is not None:
         image = cropped
@@ -99,4 +127,5 @@ def preprocess(image_path: str | Path) -> PreprocessResult:
         original_size=(original_w, original_h),
         processed_size=(processed_w, processed_h),
         scale_factor=scale,
+        layout_type=layout_type,
     )

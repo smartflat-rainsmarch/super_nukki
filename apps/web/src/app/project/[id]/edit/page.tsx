@@ -12,6 +12,8 @@ interface LayerData {
   position: { x: number; y: number; w: number; h: number } | null;
   text_content: string | null;
   z_index: number;
+  layer_kind: "editable" | "raster";
+  visible: boolean;
 }
 
 interface SelectedLayer {
@@ -30,15 +32,28 @@ export default function EditPage() {
   const [layers, setLayers] = useState<LayerData[]>([]);
   const [selected, setSelected] = useState<SelectedLayer | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
-      const res = await fetch(`${API_BASE}/api/project/${id}/result`, {
-        headers: authHeaders(),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setLayers(data.layers ?? []);
+      try {
+        const res = await fetch(`${API_BASE}/api/project/${id}/result`, {
+          headers: authHeaders(),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setLayers(
+            (data.layers ?? []).map((l: LayerData) => ({
+              ...l,
+              visible: true,
+              layer_kind: l.layer_kind ?? "raster",
+            })),
+          );
+        } else {
+          setLoadError("프로젝트를 불러올 수 없습니다.");
+        }
+      } catch {
+        setLoadError("네트워크 오류가 발생했습니다.");
       }
       setLoading(false);
     }
@@ -63,6 +78,18 @@ export default function EditPage() {
     },
     [selected],
   );
+
+  const handleToggleVisibility = useCallback((layerId: string) => {
+    setLayers((prev) =>
+      prev.map((l) => (l.id === layerId ? { ...l, visible: !l.visible } : l)),
+    );
+  }, []);
+
+  const handleTextEdit = useCallback((layerId: string, newText: string) => {
+    setLayers((prev) =>
+      prev.map((l) => (l.id === layerId ? { ...l, text_content: newText } : l)),
+    );
+  }, []);
 
   const handleSave = useCallback(async () => {
     if (!selected) return;
@@ -93,6 +120,14 @@ export default function EditPage() {
     return (
       <main className="flex min-h-screen items-center justify-center">
         <p className="text-gray-500">로딩 중...</p>
+      </main>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <p className="text-red-600">{loadError}</p>
       </main>
     );
   }
@@ -158,17 +193,45 @@ export default function EditPage() {
                 onClick={() => handleSelectLayer(layer)}
                 className={`cursor-pointer rounded-lg p-3 transition ${
                   selected?.id === layer.id ? "bg-blue-50 ring-2 ring-blue-300" : "bg-white hover:bg-gray-50"
-                }`}
+                } ${!layer.visible ? "opacity-40" : ""}`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="rounded bg-gray-100 px-2 py-0.5 text-xs">
-                    {layer.type}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleVisibility(layer.id);
+                      }}
+                      className="text-xs"
+                      title={layer.visible ? "숨기기" : "보이기"}
+                    >
+                      {layer.visible ? "👁" : "👁‍🗨"}
+                    </button>
+                    <span className="rounded bg-gray-100 px-2 py-0.5 text-xs">
+                      {layer.type}
+                    </span>
+                    <span className={`rounded px-1.5 py-0.5 text-xs ${
+                      layer.layer_kind === "editable"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-gray-50 text-gray-400"
+                    }`}>
+                      {layer.layer_kind === "editable" ? "편집" : "래스터"}
+                    </span>
+                  </div>
                   <span className="text-xs text-gray-400">z:{layer.z_index}</span>
                 </div>
-                {layer.text_content && (
+                {layer.text_content && layer.layer_kind === "editable" && selected?.id === layer.id ? (
+                  <input
+                    type="text"
+                    value={layer.text_content}
+                    onChange={(e) => handleTextEdit(layer.id, e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-1 w-full rounded border px-2 py-1 text-sm"
+                  />
+                ) : layer.text_content ? (
                   <p className="mt-1 truncate text-sm text-gray-600">{layer.text_content}</p>
-                )}
+                ) : null}
               </div>
             ))}
           </div>
