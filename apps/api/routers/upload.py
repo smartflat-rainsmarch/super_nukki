@@ -86,14 +86,56 @@ async def upload_image(
     db.add(job)
     db.commit()
 
+    # Try Celery worker first, fall back to sync processing
+    celery_dispatched = False
     try:
         from worker import process_image
         process_image.delay(str(project.id), str(file_path))
+        celery_dispatched = True
     except Exception:
-        pass  # Worker unavailable (e.g., test environment)
+        pass
+
+    if not celery_dispatched:
+        _run_pipeline_sync(str(project.id), str(file_path), db)
+
+    db.refresh(project)
 
     return UploadResponse(
         project_id=project.id,
         image_url=image_url,
         status=project.status,
     )
+
+
+def _run_pipeline_sync(project_id: str, image_path: str, db: Session):
+    from models import Project as ProjectModel
+
+    project = db.query(ProjectModel).filter(ProjectModel.id == project_id).first()
+    job = db.query(Job).filter(Job.project_id == project_id).first()
+
+    try:
+        if project:
+            project.status = "processing"
+            db.commit()
+        if job:
+            job.status = "analyzing"
+            db.commit()
+
+        output_dir = str(Path(settings.storage_path) / "outputs" / project_id)
+        from engine.pipeline import run_pipeline
+        run_pipeline(image_path, output_dir)
+
+        if job:
+            job.status = "completed"
+            db.commit()
+        if project:
+            project.status = "done"
+            db.commit()
+
+    except Exception as e:
+        if job:
+            job.status = "failed"
+            db.commit()
+        if project:
+            project.status = "failed"
+            db.commit()
