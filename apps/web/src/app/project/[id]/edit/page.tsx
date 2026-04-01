@@ -546,6 +546,17 @@ export default function EditPage() {
                     )}
                   </button>
 
+                  {/* Thumbnail */}
+                  {layer.image_url && (
+                    <div className="h-8 w-8 shrink-0 overflow-hidden rounded border bg-gray-50">
+                      <img
+                        src={`${API_BASE}${layer.image_url}`}
+                        alt=""
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
+                  )}
+
                   <div className="flex-1 min-w-0">
                     {renamingId === layer.id ? (
                       <input
