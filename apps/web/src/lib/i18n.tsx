@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import ko from "@/lib/locales/ko.json";
 import en from "@/lib/locales/en.json";
 
@@ -29,16 +29,12 @@ export const LOCALE_NAMES: Record<string, string> = {
 
 type Messages = Record<string, Record<string, string>>;
 
-const BUNDLED: Record<string, Messages> = { ko, en };
+const bundled: Record<string, Messages> = { ko, en };
 
-const cache: Record<string, Messages> = { ko, en };
-
-async function loadLocale(locale: string): Promise<Messages> {
-  if (cache[locale]) return cache[locale];
-
+async function loadMessages(locale: string): Promise<Messages> {
+  if (bundled[locale]) return bundled[locale];
   try {
     const mod = await import(`@/lib/locales/${locale}.json`);
-    cache[locale] = mod.default;
     return mod.default;
   } catch {
     return ko;
@@ -46,10 +42,8 @@ async function loadLocale(locale: string): Promise<Messages> {
 }
 
 function getValue(messages: Messages, key: string): string {
-  const parts = key.split(".");
-  if (parts.length === 2) {
-    return messages[parts[0]]?.[parts[1]] ?? "";
-  }
+  const [ns, k] = key.split(".");
+  if (ns && k) return messages[ns]?.[k] ?? "";
   return "";
 }
 
@@ -70,31 +64,37 @@ export function useTranslation() {
 }
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState("ko");
+  const [locale, setLocaleRaw] = useState("ko");
   const [messages, setMessages] = useState<Messages>(ko);
+  const [ready, setReady] = useState(false);
 
+  // Load saved locale on mount
   useEffect(() => {
-    const saved = localStorage.getItem("ui2psd_locale");
-    if (saved && SUPPORTED_LOCALES.includes(saved as Locale)) {
-      setLocaleState(saved);
-      loadLocale(saved).then(setMessages);
-    }
+    const saved = typeof window !== "undefined" ? localStorage.getItem("ui2psd_locale") : null;
+    const target = saved && SUPPORTED_LOCALES.includes(saved as Locale) ? saved : "ko";
+    setLocaleRaw(target);
+    loadMessages(target).then((m) => {
+      setMessages(m);
+      setReady(true);
+    });
   }, []);
 
   const setLocale = useCallback((newLocale: string) => {
-    setLocaleState(newLocale);
+    setLocaleRaw(newLocale);
     localStorage.setItem("ui2psd_locale", newLocale);
-    loadLocale(newLocale).then(setMessages);
+    loadMessages(newLocale).then(setMessages);
   }, []);
 
-  const t = useCallback(
-    (key: string): string => {
+  // t function recalculated when messages change
+  const t = useMemo(() => {
+    return (key: string): string => {
       const val = getValue(messages, key);
       if (val) return val;
-      return getValue(ko, key) || key;
-    },
-    [messages],
-  );
+      return getValue(ko as Messages, key) || key;
+    };
+  }, [messages]);
+
+  if (!ready) return null;
 
   return (
     <I18nContext.Provider value={{ locale, setLocale, t }}>
