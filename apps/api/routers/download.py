@@ -35,3 +35,18 @@ async def download_psd(project_id: str, db: Session = Depends(get_db)):
         media_type="application/octet-stream",
         filename=f"ui2psd_{project_id}.psd",
     )
+
+
+@router.get("/layer-image/{project_id}/{filename}")
+async def download_layer_image(project_id: str, filename: str):
+    safe_filename = Path(filename).name
+    file_path = Path(settings.storage_path) / "outputs" / project_id / "layers" / safe_filename
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Layer image not found")
+
+    return FileResponse(
+        path=str(file_path),
+        media_type="image/png",
+        filename=safe_filename,
+    )

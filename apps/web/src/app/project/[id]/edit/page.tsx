@@ -46,17 +46,20 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 // --- Download helper ---
-async function downloadLayerImage(imageUrl: string, filename: string) {
-  const res = await fetch(`${API_BASE}${imageUrl}`);
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
+function downloadLayerImage(imageUrl: string, filename: string) {
+  // imageUrl = /storage/outputs/{projectId}/layers/{file}.png
+  // Convert to API endpoint: /api/layer-image/{projectId}/{file}.png
+  const parts = imageUrl.split("/");
+  const projectId = parts[3]; // outputs/{projectId}
+  const layerFile = parts[5]; // {file}.png
+  const apiUrl = `${API_BASE}/api/layer-image/${projectId}/${layerFile}`;
+
   const a = document.createElement("a");
-  a.href = url;
+  a.href = apiUrl;
   a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 }
 
 export default function EditPage() {
@@ -348,12 +351,12 @@ export default function EditPage() {
     }
   }, [renamingId]);
 
-  const handleDownloadSelected = useCallback(async () => {
+  const handleDownloadSelected = useCallback(() => {
     setContextMenu(null);
     const targets = layers.filter((l) => selectedIds.has(l.id) && l.image_url);
     for (const layer of targets) {
       const ext = layer.image_url!.split(".").pop() ?? "png";
-      await downloadLayerImage(layer.image_url!, `${layer.name}.${ext}`);
+      downloadLayerImage(layer.image_url!, `${layer.name}.${ext}`);
     }
   }, [layers, selectedIds]);
 
