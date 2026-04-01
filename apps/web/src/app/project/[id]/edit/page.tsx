@@ -589,6 +589,43 @@ export default function EditPage() {
                 선택된 레이어 {selectedIds.size > 1 ? `(${selectedIds.size}개)` : ""}
               </h3>
 
+              {/* Thumbnail preview */}
+              {(() => {
+                const selected = layers.filter((l) => selectedIds.has(l.id) && l.image_url);
+                if (selected.length === 1) {
+                  return (
+                    <div className="mb-3 overflow-hidden rounded-lg border bg-gray-50">
+                      <img
+                        src={`${API_BASE}${selected[0].image_url}`}
+                        alt={selected[0].name}
+                        className="h-32 w-full object-contain"
+                      />
+                    </div>
+                  );
+                }
+                if (selected.length > 1) {
+                  return (
+                    <div className="mb-3 grid grid-cols-3 gap-1 rounded-lg border bg-gray-50 p-1">
+                      {selected.slice(0, 9).map((l) => (
+                        <div key={l.id} className="overflow-hidden rounded bg-white">
+                          <img
+                            src={`${API_BASE}${l.image_url}`}
+                            alt={l.name}
+                            className="h-16 w-full object-contain"
+                          />
+                        </div>
+                      ))}
+                      {selected.length > 9 && (
+                        <div className="flex h-16 items-center justify-center rounded bg-gray-100 text-xs text-gray-400">
+                          +{selected.length - 9}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
               {selectedIds.size === 1 && (
                 <div className="mb-3 flex items-center gap-2">
                   <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${TYPE_COLORS[firstSelected.type] ?? "bg-gray-100 text-gray-600"}`}>
