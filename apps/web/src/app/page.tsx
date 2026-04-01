@@ -21,7 +21,7 @@ export default function LandingPage() {
         <h1 className="mb-2 text-2xl font-bold tracking-tight md:text-3xl">
           {t("landing.title1")} <span className="text-blue-600">{t("landing.titleHighlight")}</span>{t("landing.titleSuffix")}
         </h1>
-        <p className="mb-6 max-w-2xl text-sm text-gray-500">{t("landing.subtitle")}</p>
+        <p className="mb-6 text-sm text-gray-500 whitespace-nowrap">{t("landing.subtitle")}</p>
 
         {/* Hero Banner Image */}
         <div className="mb-8 w-full max-w-5xl overflow-hidden rounded-2xl shadow-2xl">
