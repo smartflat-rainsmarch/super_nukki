@@ -1,0 +1,98 @@
+{
+  "nav": {
+    "convert": "Convert",
+    "pricing": "Pricing",
+    "mypage": "My Page",
+    "login": "Login",
+    "register": "Sign Up",
+    "logout": "Logout"
+  },
+  "landing": {
+    "title1": "Turn a single UI image into",
+    "titleHighlight": "an editable PSD",
+    "titleSuffix": "",
+    "subtitle": "AI analyzes UI screenshots, separates layers, extracts text, restores backgrounds, and generates PSD files.",
+    "cta": "Start for Free",
+    "viewPricing": "View Pricing",
+    "freeTrial": "3 free conversions per month without sign up",
+    "beforeAfter": "Before → After",
+    "beforeLabel": "UI Screenshot (single image)",
+    "afterLabel": "PSD Layer File (editable)",
+    "featuresTitle": "One Pipeline Does It All",
+    "feat1Title": "AI Element Separation",
+    "feat1Desc": "Automatically separate buttons, cards, icons, and backgrounds into layers",
+    "feat2Title": "Text OCR",
+    "feat2Desc": "Auto-detect font size, color, alignment to create editable text layers",
+    "feat3Title": "Background Restoration",
+    "feat3Desc": "Natural inpainting after removing text and icons",
+    "feat4Title": "PSD Layer Output",
+    "feat4Desc": "Edit directly in Photoshop with organized group structure",
+    "useCasesTitle": "Who Uses This?",
+    "ctaBottom": "Get Started Now",
+    "ctaBottomSub": "AI creates editable drafts ready for production",
+    "ctaBottomBtn": "Start Free Trial"
+  },
+  "login": {
+    "title": "Login",
+    "welcome": "Welcome to UI2PSD Studio",
+    "googleBtn": "Continue with Google",
+    "kakaoBtn": "Continue with Kakao",
+    "emailBtn": "Continue with Email",
+    "or": "or",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Login",
+    "loading": "Logging in...",
+    "noAccount": "Don't have an account?",
+    "registerLink": "Sign Up"
+  },
+  "register": {
+    "title": "Sign Up",
+    "subtitle": "Start for free",
+    "passwordPlaceholder": "Password (8+ characters)",
+    "confirmPlaceholder": "Confirm Password",
+    "submit": "Sign Up",
+    "loading": "Signing up...",
+    "hasAccount": "Already have an account?",
+    "loginLink": "Login",
+    "passwordMismatch": "Passwords do not match.",
+    "passwordShort": "Password must be at least 8 characters."
+  },
+  "upload": {
+    "title": "Upload Image",
+    "subtitle": "Upload a UI image to convert it to a PSD file",
+    "dragText": "Drag or click to upload PNG, JPG, WebP",
+    "pasteHint": "Paste from clipboard with Ctrl+V | Max 20MB",
+    "uploading": "Uploading...",
+    "success": "Upload complete! Redirecting...",
+    "retry": "Try again",
+    "limitTitle": "Free conversion limit reached",
+    "limitDesc": "Log in for more conversions, or upgrade your plan for unlimited access.",
+    "limitLogin": "Login",
+    "limitPricing": "View Plans",
+    "invalidType": "Only PNG, JPG, WebP files are supported.",
+    "tooLarge": "File size must be 20MB or less."
+  },
+  "pricing": {
+    "title": "Pricing",
+    "subtitle": "Choose the plan that fits your needs",
+    "free": "Free",
+    "basic": "Basic",
+    "pro": "Pro",
+    "popular": "Popular",
+    "perMonth": "/mo",
+    "currentPlan": "Current Plan",
+    "startBtn": "Get Started"
+  },
+  "footer": {
+    "description": "AI converts UI images into editable PSD layer files",
+    "service": "Service",
+    "info": "Info",
+    "notice": "Results are production-ready editing drafts. AI analysis does not guarantee perfect restoration.",
+    "rights": "UI2PSD Studio. All rights reserved."
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred."
+  }
+}

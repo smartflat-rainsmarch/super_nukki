@@ -1,0 +1,10 @@
+{
+  "nav": { "convert": "转换", "pricing": "定价", "mypage": "我的页面", "login": "登录", "register": "注册", "logout": "退出" },
+  "landing": { "title1": "将一张UI图片转换为", "titleHighlight": "可编辑的PSD", "titleSuffix": "", "subtitle": "AI分析UI截图，分离图层，提取文字，修复背景，生成PSD文件。", "cta": "免费开始", "viewPricing": "查看定价", "freeTrial": "无需注册，每月3次免费转换", "beforeAfter": "转换前 → 转换后", "beforeLabel": "UI截图（单张图片）", "afterLabel": "PSD图层文件（可编辑）", "featuresTitle": "一个流程搞定一切", "feat1Title": "AI元素分离", "feat1Desc": "自动将按钮、卡片、图标、背景分离为图层", "feat2Title": "文字OCR", "feat2Desc": "自动检测字体大小、颜色、对齐方式，创建可编辑文字图层", "feat3Title": "背景修复", "feat3Desc": "移除文字/图标后自然修复背景", "feat4Title": "PSD图层输出", "feat4Desc": "在Photoshop中直接编辑，分组结构清晰", "useCasesTitle": "谁在使用？", "ctaBottom": "立即开始", "ctaBottomSub": "AI为您创建可用于生产的可编辑草稿", "ctaBottomBtn": "开始免费试用" },
+  "login": { "title": "登录", "welcome": "欢迎来到UI2PSD Studio", "googleBtn": "使用Google继续", "kakaoBtn": "使用Kakao继续", "emailBtn": "使用邮箱继续", "or": "或", "email": "邮箱", "password": "密码", "submit": "登录", "loading": "登录中...", "noAccount": "没有账号？", "registerLink": "注册" },
+  "register": { "title": "注册", "subtitle": "免费开始", "passwordPlaceholder": "密码（8位以上）", "confirmPlaceholder": "确认密码", "submit": "注册", "loading": "注册中...", "hasAccount": "已有账号？", "loginLink": "登录", "passwordMismatch": "密码不一致。", "passwordShort": "密码至少8位。" },
+  "upload": { "title": "上传图片", "subtitle": "上传UI图片，转换为PSD文件", "dragText": "拖拽或点击上传PNG、JPG、WebP", "pasteHint": "Ctrl+V粘贴 | 最大20MB", "uploading": "上传中...", "success": "上传完成！正在跳转...", "retry": "重试", "limitTitle": "免费转换次数已用完", "limitDesc": "登录可获得更多转换次数，或升级套餐享受无限转换。", "limitLogin": "登录", "limitPricing": "查看套餐", "invalidType": "仅支持PNG、JPG、WebP文件。", "tooLarge": "文件大小不超过20MB。" },
+  "pricing": { "title": "定价", "subtitle": "选择适合您的套餐", "free": "免费", "basic": "基础", "pro": "专业", "popular": "热门", "perMonth": "/月", "currentPlan": "当前套餐", "startBtn": "开始使用" },
+  "footer": { "description": "AI将UI图片转换为可编辑的PSD图层文件", "service": "服务", "info": "说明", "notice": "结果为生产级编辑草稿。AI分析不保证完美还原。", "rights": "UI2PSD Studio. All rights reserved." },
+  "common": { "loading": "加载中...", "error": "发生错误。" }
+}
