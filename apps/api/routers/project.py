@@ -66,17 +66,21 @@ async def get_project_result(project_id: str, db: Session = Depends(get_db)):
 
     psd_url = f"/api/download/{project_id}" if project.status == "done" else None
 
+    canvas_size = _get_canvas_size(str(pid))
+
     return {
         "id": str(project.id),
         "image_url": project.image_url,
         "status": project.status,
         "psd_url": psd_url,
+        "canvas_size": canvas_size,
         "notice": "이 결과는 AI가 생성한 편집 가능한 초안입니다. 완벽한 복원을 보장하지 않습니다.",
         "layers": [
             {
                 "id": str(l.id),
                 "type": l.type,
                 "position": l.position,
+                "image_url": l.image_url,
                 "text_content": l.text_content,
                 "z_index": l.z_index,
                 "layer_kind": "editable" if l.type == "text" else "raster",
@@ -84,3 +88,17 @@ async def get_project_result(project_id: str, db: Session = Depends(get_db)):
             for l in layers
         ],
     }
+
+
+def _get_canvas_size(project_id: str) -> dict:
+    import json
+    from pathlib import Path
+    from config import settings
+
+    manifest_path = Path(settings.storage_path) / "outputs" / project_id / "layers" / "manifest.json"
+    if manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text())
+        cs = manifest.get("canvas_size", {})
+        return {"width": cs.get("width", 400), "height": cs.get("height", 700)}
+
+    return {"width": 400, "height": 700}

@@ -1,5 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+from config import settings
 
 from error_handlers import register_error_handlers
 from routers import admin, api_keys, assets, auth, batch, billing, export, model_config, projects_list, sla, sso, teams, upload, project, download, usage
@@ -37,6 +40,8 @@ app.include_router(usage.router)
 
 
 register_error_handlers(app)
+
+app.mount("/storage", StaticFiles(directory=settings.storage_path), name="storage")
 
 
 @app.on_event("startup")

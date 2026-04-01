@@ -108,7 +108,7 @@ async def upload_image(
 
 
 def _run_pipeline_sync(project_id: str, image_path: str, db: Session):
-    from models import Project as ProjectModel
+    from models import Layer, Project as ProjectModel
 
     project = db.query(ProjectModel).filter(ProjectModel.id == project_id).first()
     job = db.query(Job).filter(Job.project_id == project_id).first()
@@ -125,6 +125,8 @@ def _run_pipeline_sync(project_id: str, image_path: str, db: Session):
         from engine.pipeline import run_pipeline
         run_pipeline(image_path, output_dir)
 
+        _populate_layers_from_manifest(project_id, output_dir, db)
+
         if job:
             job.status = "completed"
             db.commit()
@@ -139,3 +141,41 @@ def _run_pipeline_sync(project_id: str, image_path: str, db: Session):
         if project:
             project.status = "failed"
             db.commit()
+
+
+def _populate_layers_from_manifest(project_id: str, output_dir: str, db: Session):
+    import json
+    from models import Layer
+
+    manifest_path = Path(output_dir) / "layers" / "manifest.json"
+    if not manifest_path.exists():
+        return
+
+    manifest = json.loads(manifest_path.read_text())
+
+    valid_types = {"text", "button", "image", "icon", "card", "background"}
+
+    for layer_data in manifest.get("layers", []):
+        bbox = layer_data.get("bbox", {})
+        raw_type = layer_data.get("type", "image")
+        layer_type = raw_type if raw_type in valid_types else "image"
+
+        image_filename = Path(layer_data.get("image_path", "")).name
+        image_url = f"/storage/outputs/{project_id}/layers/{image_filename}"
+
+        layer = Layer(
+            project_id=project_id,
+            type=layer_type,
+            position={
+                "x": bbox.get("x", 0),
+                "y": bbox.get("y", 0),
+                "w": bbox.get("w", 0),
+                "h": bbox.get("h", 0),
+            },
+            image_url=image_url,
+            text_content=layer_data.get("text_content"),
+            z_index=layer_data.get("z_index", 0),
+        )
+        db.add(layer)
+
+    db.commit()

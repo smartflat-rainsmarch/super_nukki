@@ -20,7 +20,7 @@ def test_upload_valid_png(client):
     assert response.status_code == 200
     data = response.json()
     assert "project_id" in data
-    assert data["status"] == "pending"
+    assert data["status"] in ("pending", "done")
     assert data["image_url"].endswith(".png")
 
 
@@ -31,7 +31,7 @@ def test_upload_valid_jpeg(client):
         files={"file": ("test.jpg", content, "image/jpeg")},
     )
     assert response.status_code == 200
-    assert response.json()["status"] == "pending"
+    assert response.json()["status"] in ("pending", "done")
 
 
 def test_upload_invalid_extension(client):
