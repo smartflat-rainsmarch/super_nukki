@@ -132,8 +132,12 @@ async def send_code(body: SendCodeRequest, db: Session = Depends(get_db)):
         .first()
     )
     now = datetime.now(timezone.utc)
-    if recent and (now - recent.created_at).total_seconds() < 60:
-        raise HTTPException(status_code=429, detail="인증번호를 너무 자주 요청했습니다. 60초 후 다시 시도하세요.")
+    if recent and recent.created_at:
+        created = recent.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        if (now - created).total_seconds() < 60:
+            raise HTTPException(status_code=429, detail="인증번호를 너무 자주 요청했습니다. 60초 후 다시 시도하세요.")
 
     code = f"{secrets.randbelow(1000000):06d}"
     expires_at = now + timedelta(minutes=VERIFY_CODE_EXPIRE_MINUTES)
@@ -173,7 +177,10 @@ async def verify_code(body: VerifyCodeRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=429, detail="너무 많은 시도입니다. 인증번호를 다시 요청하세요.")
 
     now = datetime.now(timezone.utc)
-    if now > verification.expires_at:
+    exp = verification.expires_at
+    if exp and exp.tzinfo is None:
+        exp = exp.replace(tzinfo=timezone.utc)
+    if now > exp:
         raise HTTPException(status_code=400, detail="인증번호가 만료되었습니다. 다시 요청하세요.")
 
     if verification.code != body.code:
