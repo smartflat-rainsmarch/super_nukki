@@ -358,9 +358,13 @@ export default function EditPage() {
   const handleDownloadSelected = useCallback(async () => {
     setContextMenu(null);
     const targets = layers.filter((l) => selectedIds.has(l.id) && l.image_url);
-    for (const layer of targets) {
+    for (let i = 0; i < targets.length; i++) {
+      const layer = targets[i];
       const ext = layer.image_url!.split(".").pop() ?? "png";
       await downloadLayerImage(layer.image_url!, `${layer.name}.${ext}`);
+      if (i < targets.length - 1) {
+        await new Promise((r) => setTimeout(r, 500));
+      }
     }
   }, [layers, selectedIds]);
 
