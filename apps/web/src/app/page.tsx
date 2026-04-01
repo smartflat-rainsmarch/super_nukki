@@ -17,14 +17,11 @@ export default function LandingPage() {
   return (
     <>
       {/* Hero */}
-      <section className="flex flex-col items-center px-6 pt-16 pb-10 text-center">
-        <h1 className="mb-4 text-5xl font-extrabold leading-tight tracking-tight md:text-6xl">
-          {t("landing.title1")}
-          <br />
-          <span className="text-blue-600">{t("landing.titleHighlight")}</span>
-          {t("landing.titleSuffix")}
+      <section className="flex flex-col items-center px-6 pt-12 pb-10 text-center">
+        <h1 className="mb-2 text-2xl font-bold tracking-tight md:text-3xl">
+          {t("landing.title1")} <span className="text-blue-600">{t("landing.titleHighlight")}</span>{t("landing.titleSuffix")}
         </h1>
-        <p className="mb-8 max-w-xl text-lg text-gray-600">{t("landing.subtitle")}</p>
+        <p className="mb-6 max-w-2xl text-sm text-gray-500">{t("landing.subtitle")}</p>
 
         {/* Hero Banner Image */}
         <div className="mb-8 w-full max-w-5xl overflow-hidden rounded-2xl shadow-2xl">
