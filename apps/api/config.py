@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     kakao_client_secret: str = ""
     kakao_redirect_uri: str = "http://localhost:3000/auth/callback?provider=kakao"
 
+    # SMTP (Gmail)
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+
     model_config = ConfigDict(env_file=".env")
 
 

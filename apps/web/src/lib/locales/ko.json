@@ -49,6 +49,12 @@
   "register": {
     "title": "회원가입",
     "subtitle": "무료로 시작하세요",
+    "sendCode": "인증번호 받기",
+    "codeSent": "으로 인증번호를 발송했습니다.",
+    "codePlaceholder": "인증번호 6자리",
+    "verifyBtn": "확인",
+    "resendCode": "인증번호 다시 받기",
+    "verified": "이메일 인증 완료! 비밀번호를 설정하세요.",
     "passwordPlaceholder": "비밀번호 (8자 이상)",
     "confirmPlaceholder": "비밀번호 확인",
     "submit": "회원가입",

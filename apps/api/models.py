@@ -143,6 +143,18 @@ class Billing(Base):
     user = relationship("User", back_populates="billing")
 
 
+class EmailVerification(Base):
+    __tablename__ = "email_verifications"
+
+    id = Column(UUIDString, primary_key=True, default=new_uuid)
+    email = Column(String(255), nullable=False, index=True)
+    code = Column(String(6), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    verified = Column(Integer, default=0, nullable=False)  # 0=pending, 1=verified
+    attempts = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
 class IpUsage(Base):
     __tablename__ = "ip_usage"
 

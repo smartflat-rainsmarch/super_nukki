@@ -49,6 +49,12 @@
   "register": {
     "title": "Sign Up",
     "subtitle": "Start for free",
+    "sendCode": "Send Verification Code",
+    "codeSent": " — verification code sent.",
+    "codePlaceholder": "6-digit code",
+    "verifyBtn": "Verify",
+    "resendCode": "Resend code",
+    "verified": "Email verified! Set your password.",
     "passwordPlaceholder": "Password (8+ characters)",
     "confirmPlaceholder": "Confirm Password",
     "submit": "Sign Up",
