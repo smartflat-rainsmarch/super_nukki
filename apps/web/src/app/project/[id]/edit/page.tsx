@@ -46,20 +46,24 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 // --- Download helper ---
-function downloadLayerImage(imageUrl: string, filename: string) {
+async function downloadLayerImage(imageUrl: string, filename: string) {
   // imageUrl = /storage/outputs/{projectId}/layers/{file}.png
-  // Convert to API endpoint: /api/layer-image/{projectId}/{file}.png
+  // Convert to CORS-enabled API endpoint
   const parts = imageUrl.split("/");
-  const projectId = parts[3]; // outputs/{projectId}
-  const layerFile = parts[5]; // {file}.png
+  const projectId = parts[3];
+  const layerFile = parts[5];
   const apiUrl = `${API_BASE}/api/layer-image/${projectId}/${layerFile}`;
 
+  const res = await fetch(apiUrl);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = apiUrl;
+  a.href = url;
   a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 export default function EditPage() {
@@ -351,12 +355,12 @@ export default function EditPage() {
     }
   }, [renamingId]);
 
-  const handleDownloadSelected = useCallback(() => {
+  const handleDownloadSelected = useCallback(async () => {
     setContextMenu(null);
     const targets = layers.filter((l) => selectedIds.has(l.id) && l.image_url);
     for (const layer of targets) {
       const ext = layer.image_url!.split(".").pop() ?? "png";
-      downloadLayerImage(layer.image_url!, `${layer.name}.${ext}`);
+      await downloadLayerImage(layer.image_url!, `${layer.name}.${ext}`);
     }
   }, [layers, selectedIds]);
 
