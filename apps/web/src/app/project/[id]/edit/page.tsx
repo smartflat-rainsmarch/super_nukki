@@ -48,13 +48,13 @@ const TYPE_COLORS: Record<string, string> = {
 // --- Download helper ---
 async function downloadLayerImage(imageUrl: string, filename: string) {
   // imageUrl = /storage/outputs/{projectId}/layers/{file}.png
-  // Convert to CORS-enabled API endpoint
-  const parts = imageUrl.split("/");
-  const projectId = parts[3];
-  const layerFile = parts[5];
+  const match = imageUrl.match(/\/storage\/outputs\/([^/]+)\/layers\/(.+)$/);
+  if (!match) return;
+  const [, projectId, layerFile] = match;
   const apiUrl = `${API_BASE}/api/layer-image/${projectId}/${layerFile}`;
 
   const res = await fetch(apiUrl);
+  if (!res.ok) return;
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

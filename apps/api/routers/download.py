@@ -39,9 +39,16 @@ async def download_psd(project_id: str, db: Session = Depends(get_db)):
 
 @router.get("/layer-image/{project_id}/{filename}")
 async def download_layer_image(project_id: str, filename: str):
-    safe_filename = Path(filename).name
-    file_path = Path(settings.storage_path) / "outputs" / project_id / "layers" / safe_filename
+    try:
+        UUID(project_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid project ID")
 
+    safe_filename = Path(filename).name
+    if ".." in safe_filename or "/" in safe_filename or "\\" in safe_filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    file_path = Path(settings.storage_path) / "outputs" / project_id / "layers" / safe_filename
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Layer image not found")
 
