@@ -23,6 +23,7 @@ interface LayerData {
   z_index: number;
   layer_kind: "editable" | "raster";
   visible: boolean;
+  name: string;
 }
 
 interface CanvasSize {
@@ -126,9 +127,10 @@ export default function EditPage() {
         }
         const data = await res.json();
         if (data.canvas_size) setCanvasSize(data.canvas_size);
-        const initial = (data.layers ?? []).map((l: Omit<LayerData, "visible">) => ({
+        const initial = (data.layers ?? []).map((l: Omit<LayerData, "visible" | "name">, i: number) => ({
           ...l,
           visible: true,
+          name: l.text_content || `${l.type}_${i}`,
         }));
         setLayers(initial);
         setHistory([initial]);
@@ -318,12 +320,40 @@ export default function EditPage() {
     [selectedIds],
   );
 
+  // --- Rename (double-click) ---
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
+  const handleStartRename = useCallback((layerId: string) => {
+    const layer = layers.find((l) => l.id === layerId);
+    if (!layer) return;
+    setRenamingId(layerId);
+    setRenameValue(layer.name);
+  }, [layers]);
+
+  const handleFinishRename = useCallback(() => {
+    if (renamingId && renameValue.trim()) {
+      updateLayers((prev) =>
+        prev.map((l) => (l.id === renamingId ? { ...l, name: renameValue.trim() } : l)),
+      );
+    }
+    setRenamingId(null);
+  }, [renamingId, renameValue, updateLayers]);
+
+  useEffect(() => {
+    if (renamingId && renameInputRef.current) {
+      renameInputRef.current.focus();
+      renameInputRef.current.select();
+    }
+  }, [renamingId]);
+
   const handleDownloadSelected = useCallback(async () => {
     setContextMenu(null);
     const targets = layers.filter((l) => selectedIds.has(l.id) && l.image_url);
     for (const layer of targets) {
       const ext = layer.image_url!.split(".").pop() ?? "png";
-      await downloadLayerImage(layer.image_url!, `${layer.type}_${layer.z_index}.${ext}`);
+      await downloadLayerImage(layer.image_url!, `${layer.name}.${ext}`);
     }
   }, [layers, selectedIds]);
 
@@ -475,6 +505,10 @@ export default function EditPage() {
                 <div
                   key={layer.id}
                   onClick={(e) => handleSelectLayer(layer.id, e.ctrlKey || e.metaKey)}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    handleStartRename(layer.id);
+                  }}
                   onContextMenu={(e) => handleContextMenu(e, layer.id)}
                   className={`flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 transition ${
                     isSelected ? "bg-blue-50 ring-2 ring-blue-300" : "hover:bg-gray-50"
@@ -502,16 +536,32 @@ export default function EditPage() {
                   </button>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${TYPE_COLORS[layer.type] ?? "bg-gray-100 text-gray-600"}`}>
-                        {layer.type}
-                      </span>
-                      {layer.layer_kind === "editable" && (
-                        <span className="text-[10px] text-green-600">편집가능</span>
-                      )}
-                    </div>
-                    {layer.text_content && (
-                      <p className="mt-0.5 truncate text-xs text-gray-500">{layer.text_content}</p>
+                    {renamingId === layer.id ? (
+                      <input
+                        ref={renameInputRef}
+                        type="text"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onBlur={handleFinishRename}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleFinishRename();
+                          if (e.key === "Escape") setRenamingId(null);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full rounded border border-blue-400 px-1.5 py-0.5 text-xs focus:outline-none"
+                      />
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${TYPE_COLORS[layer.type] ?? "bg-gray-100 text-gray-600"}`}>
+                            {layer.type}
+                          </span>
+                          <span className="truncate text-xs text-gray-700">{layer.name}</span>
+                        </div>
+                        {layer.text_content && (
+                          <p className="mt-0.5 truncate text-xs text-gray-400">{layer.text_content}</p>
+                        )}
+                      </>
                     )}
                   </div>
 
