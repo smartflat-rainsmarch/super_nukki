@@ -143,6 +143,15 @@ class Billing(Base):
     user = relationship("User", back_populates="billing")
 
 
+class IpUsage(Base):
+    __tablename__ = "ip_usage"
+
+    id = Column(UUIDString, primary_key=True, default=new_uuid)
+    ip_address = Column(String(45), unique=True, nullable=False, index=True)
+    usage_count = Column(Integer, default=0, nullable=False)
+    reset_date = Column(DateTime(timezone=True), nullable=True)
+
+
 class Team(Base):
     __tablename__ = "teams"
 

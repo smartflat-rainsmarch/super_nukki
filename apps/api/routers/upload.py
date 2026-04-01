@@ -1,18 +1,22 @@
 import uuid
+from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, Request, UploadFile, File, HTTPException
+from fastapi.responses import JSONResponse
 from PIL import Image
 from sqlalchemy.orm import Session
 
+from auth import get_current_user
 from config import settings
 from database import get_db
-from models import Job, Project
+from models import IpUsage, Job, Project, User
 from schemas import UploadResponse
 
 router = APIRouter(prefix="/api", tags=["upload"])
 
+FREE_LIMIT = 3
 MAX_SIZE_BYTES = settings.max_upload_size_mb * 1024 * 1024
 
 MIME_TO_EXT = {
@@ -41,11 +45,17 @@ def _validate_image_content(content: bytes) -> str:
 
 @router.post("/upload", response_model=UploadResponse)
 async def upload_image(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    user: User | None = Depends(get_current_user),
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
+
+    # Usage limit check
+    if user is None:
+        _check_ip_limit(request, db)
 
     chunks: list[bytes] = []
     total = 0
@@ -77,10 +87,18 @@ async def upload_image(
 
     image_url = f"/storage/uploads/{filename}"
 
-    project = Project(image_url=image_url, status="pending")
+    project = Project(
+        image_url=image_url,
+        status="pending",
+        user_id=str(user.id) if user else None,
+    )
     db.add(project)
     db.commit()
     db.refresh(project)
+
+    # Increment usage
+    if user is None:
+        _increment_ip_usage(request, db)
 
     job = Job(project_id=project.id, status="queued")
     db.add(job)
@@ -141,6 +159,59 @@ def _run_pipeline_sync(project_id: str, image_path: str, db: Session):
         if project:
             project.status = "failed"
             db.commit()
+
+
+def _get_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _check_ip_limit(request: Request, db: Session):
+    ip = _get_client_ip(request)
+    record = db.query(IpUsage).filter(IpUsage.ip_address == ip).first()
+
+    if not record:
+        return  # first use, will be created in _increment
+
+    now = datetime.now(timezone.utc)
+    if record.reset_date and now >= record.reset_date:
+        record.usage_count = 0
+        next_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if now.month == 12:
+            next_month = next_month.replace(year=now.year + 1, month=1)
+        else:
+            next_month = next_month.replace(month=now.month + 1)
+        record.reset_date = next_month
+        db.commit()
+        return
+
+    if record.usage_count >= FREE_LIMIT:
+        raise HTTPException(
+            status_code=403,
+            detail="무료 변환 횟수를 모두 사용했습니다 (3/3). 로그인하거나 요금제를 업그레이드하세요.",
+            headers={"X-Upgrade-Required": "true"},
+        )
+
+
+def _increment_ip_usage(request: Request, db: Session):
+    ip = _get_client_ip(request)
+    record = db.query(IpUsage).filter(IpUsage.ip_address == ip).first()
+
+    now = datetime.now(timezone.utc)
+    next_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if now.month == 12:
+        next_month = next_month.replace(year=now.year + 1, month=1)
+    else:
+        next_month = next_month.replace(month=now.month + 1)
+
+    if not record:
+        record = IpUsage(ip_address=ip, usage_count=1, reset_date=next_month)
+        db.add(record)
+    else:
+        record.usage_count = record.usage_count + 1
+    db.commit()
 
 
 def _populate_layers_from_manifest(project_id: str, output_dir: str, db: Session):
