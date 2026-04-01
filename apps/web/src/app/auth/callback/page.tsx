@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { handleOAuthCallback } from "@/lib/auth";
 
@@ -8,8 +8,12 @@ export default function AuthCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
+  const processed = useRef(false);
 
   useEffect(() => {
+    if (processed.current) return;
+    processed.current = true;
+
     const code = searchParams.get("code");
     const provider = searchParams.get("provider");
 
@@ -35,10 +39,7 @@ export default function AuthCallbackPage() {
       <main className="flex min-h-screen flex-col items-center justify-center p-8">
         <div className="w-full max-w-sm text-center">
           <p className="mb-4 text-red-600">{error}</p>
-          <a
-            href="/login"
-            className="text-sm text-blue-600 underline"
-          >
+          <a href="/login" className="text-sm text-blue-600 underline">
             로그인 페이지로 돌아가기
           </a>
         </div>
