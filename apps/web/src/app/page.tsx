@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useTranslation } from "@/lib/i18n";
 
 export default function LandingPage() {
@@ -15,7 +16,8 @@ export default function LandingPage() {
 
   return (
     <>
-      <section className="flex min-h-[80vh] flex-col items-center justify-center px-6 text-center">
+      {/* Hero */}
+      <section className="flex flex-col items-center px-6 pt-16 pb-10 text-center">
         <h1 className="mb-4 text-5xl font-extrabold leading-tight tracking-tight md:text-6xl">
           {t("landing.title1")}
           <br />
@@ -23,6 +25,19 @@ export default function LandingPage() {
           {t("landing.titleSuffix")}
         </h1>
         <p className="mb-8 max-w-xl text-lg text-gray-600">{t("landing.subtitle")}</p>
+
+        {/* Hero Banner Image */}
+        <div className="mb-8 w-full max-w-5xl overflow-hidden rounded-2xl shadow-2xl">
+          <Image
+            src="/hero-banner.jpg"
+            alt="UI2PSD - Before and After"
+            width={1200}
+            height={600}
+            className="h-auto w-full"
+            priority
+          />
+        </div>
+
         <div className="flex gap-4">
           <Link href="/upload" className="rounded-lg bg-blue-600 px-8 py-3 text-lg font-medium text-white transition hover:bg-blue-700">
             {t("landing.cta")}
@@ -34,41 +49,13 @@ export default function LandingPage() {
         <p className="mt-4 text-sm text-gray-400">{t("landing.freeTrial")}</p>
       </section>
 
+      {/* Features */}
       <section className="bg-gray-50 px-6 py-20">
-        <div className="mx-auto max-w-4xl text-center">
-          <h2 className="mb-10 text-3xl font-bold">{t("landing.beforeAfter")}</h2>
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="rounded-xl bg-white p-6 shadow">
-              <div className="mb-3 flex h-48 items-center justify-center rounded-lg bg-gray-100">
-                <span className="text-4xl text-gray-300">PNG</span>
-              </div>
-              <p className="font-medium text-gray-500">{t("landing.beforeLabel")}</p>
-            </div>
-            <div className="rounded-xl bg-white p-6 shadow ring-2 ring-blue-200">
-              <div className="mb-3 flex h-48 items-center justify-center rounded-lg bg-blue-50">
-                <div className="space-y-1 text-left text-sm text-blue-700">
-                  <p>Header</p>
-                  <p className="pl-4">Title Text</p>
-                  <p>Card</p>
-                  <p className="pl-4">Image</p>
-                  <p className="pl-4">Description</p>
-                  <p>CTA</p>
-                  <p className="pl-4">Button</p>
-                  <p>Background (restored)</p>
-                </div>
-              </div>
-              <p className="font-medium text-blue-600">{t("landing.afterLabel")}</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-6 py-20">
         <div className="mx-auto max-w-4xl">
           <h2 className="mb-10 text-center text-3xl font-bold">{t("landing.featuresTitle")}</h2>
           <div className="grid gap-6 sm:grid-cols-2">
             {FEATURES.map((f) => (
-              <div key={f.icon} className="rounded-xl border border-gray-200 p-6">
+              <div key={f.icon} className="rounded-xl border border-gray-200 bg-white p-6">
                 <span className="mb-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600">
                   {f.icon}
                 </span>
@@ -80,6 +67,7 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* CTA */}
       <section className="px-6 py-20 text-center">
         <h2 className="mb-4 text-3xl font-bold">{t("landing.ctaBottom")}</h2>
         <p className="mb-8 text-gray-600">{t("landing.ctaBottomSub")}</p>
