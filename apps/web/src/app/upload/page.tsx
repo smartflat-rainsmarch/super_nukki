@@ -4,11 +4,13 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { uploadImage } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 
 type UploadState = "idle" | "uploading" | "success" | "error" | "limit_reached";
 
 export default function UploadPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [state, setState] = useState<UploadState>("idle");
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,13 +20,13 @@ export default function UploadPage() {
     async (file: File) => {
       const allowed = ["image/png", "image/jpeg", "image/webp"];
       if (!allowed.includes(file.type)) {
-        setError("PNG, JPG, WebP 파일만 업로드 가능합니다.");
+        setError(t("upload.invalidType"));
         setState("error");
         return;
       }
 
       if (file.size > 20 * 1024 * 1024) {
-        setError("파일 크기는 20MB 이하여야 합니다.");
+        setError(t("upload.tooLarge"));
         setState("error");
         return;
       }
@@ -42,8 +44,8 @@ export default function UploadPage() {
           router.push(`/project/${result.project_id}`);
         }, 500);
       } catch (err) {
-        const message = err instanceof Error ? err.message : "업로드에 실패했습니다.";
-        if (message.includes("무료") || message.includes("한도")) {
+        const message = err instanceof Error ? err.message : t("common.error");
+        if (message.includes("무료") || message.includes("한도") || message.includes("limit")) {
           setState("limit_reached");
         } else {
           setError(message);
@@ -51,7 +53,7 @@ export default function UploadPage() {
         }
       }
     },
-    [router],
+    [router, t],
   );
 
   const handleDrop = useCallback(
@@ -87,31 +89,30 @@ export default function UploadPage() {
       className="flex min-h-screen flex-col items-center justify-center p-8"
       onPaste={handlePaste}
     >
-      <h1 className="mb-2 text-3xl font-bold">이미지 업로드</h1>
-      <p className="mb-8 text-gray-500">UI 이미지를 업로드하면 PSD 파일로 변환합니다</p>
+      <h1 className="mb-2 text-3xl font-bold">{t("upload.title")}</h1>
+      <p className="mb-8 text-gray-500">{t("upload.subtitle")}</p>
 
-      {/* Limit reached modal */}
       {state === "limit_reached" && (
         <div className="mb-6 w-full max-w-lg rounded-xl border border-amber-200 bg-amber-50 p-8 text-center">
           <div className="mb-3 text-4xl">3/3</div>
           <h2 className="mb-2 text-xl font-bold text-gray-900">
-            무료 변환 횟수를 모두 사용했습니다
+            {t("upload.limitTitle")}
           </h2>
           <p className="mb-6 text-sm text-gray-600">
-            로그인하면 추가 변환이 가능하고, 요금제를 업그레이드하면 더 많은 변환을 이용할 수 있습니다.
+            {t("upload.limitDesc")}
           </p>
           <div className="flex justify-center gap-3">
             <Link
               href="/login"
               className="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
             >
-              로그인하기
+              {t("upload.limitLogin")}
             </Link>
             <Link
               href="/pricing"
               className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700"
             >
-              요금제 보기
+              {t("upload.limitPricing")}
             </Link>
           </div>
         </div>
@@ -141,18 +142,14 @@ export default function UploadPage() {
           {state === "idle" && (
             <div>
               <div className="mb-4 text-5xl text-gray-300">+</div>
-              <p className="text-gray-500">
-                PNG, JPG, WebP 파일을 드래그하거나 클릭
-              </p>
-              <p className="mt-1 text-sm text-gray-400">
-                Ctrl+V로 클립보드 붙여넣기 가능 | 최대 20MB
-              </p>
+              <p className="text-gray-500">{t("upload.dragText")}</p>
+              <p className="mt-1 text-sm text-gray-400">{t("upload.pasteHint")}</p>
             </div>
           )}
 
           {state === "uploading" && (
             <div className="w-full">
-              <p className="mb-3 text-blue-600">업로드 중...</p>
+              <p className="mb-3 text-blue-600">{t("upload.uploading")}</p>
               <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
                 <div
                   className="h-full rounded-full bg-blue-600 transition-all duration-300"
@@ -163,7 +160,7 @@ export default function UploadPage() {
           )}
 
           {state === "success" && (
-            <p className="text-green-600">업로드 완료! 처리 페이지로 이동합니다...</p>
+            <p className="text-green-600">{t("upload.success")}</p>
           )}
 
           {state === "error" && (
@@ -178,7 +175,7 @@ export default function UploadPage() {
                 }}
                 className="text-sm text-blue-600 underline"
               >
-                다시 시도
+                {t("upload.retry")}
               </button>
             </div>
           )}
