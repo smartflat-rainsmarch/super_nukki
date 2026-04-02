@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Inter, sans-serif; padding: 16px; background: #fff; }
+    h2 { font-size: 16px; margin-bottom: 12px; color: #333; }
+    .field { margin-bottom: 12px; }
+    label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; }
+    input { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
+    input:focus { outline: none; border-color: #2563eb; }
+    button { width: 100%; padding: 10px; background: #2563eb; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #93c5fd; cursor: not-allowed; }
+    .status { margin-top: 12px; font-size: 12px; color: #666; text-align: center; }
+    .error { color: #dc2626; }
+    .success { color: #16a34a; }
+    .divider { border-top: 1px solid #eee; margin: 16px 0; }
+    .hint { font-size: 11px; color: #999; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <h2>UI2PSD → Figma Import</h2>
+
+  <div class="field">
+    <label>Share Code or URL</label>
+    <input type="text" id="shareCode" placeholder="ABC123... or https://..." />
+    <p class="hint">UI2PSD에서 "Figma로 보내기"로 생성된 코드를 입력하세요</p>
+  </div>
+
+  <button id="importBtn" onclick="startImport()">Import to Figma</button>
+
+  <div class="divider"></div>
+
+  <div class="field">
+    <label>API Base URL (optional)</label>
+    <input type="text" id="apiUrl" placeholder="http://localhost:8001" value="http://localhost:8001" />
+  </div>
+
+  <div id="status" class="status"></div>
+
+  <script>
+    function setStatus(msg, type) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = 'status ' + (type || '');
+    }
+
+    function startImport() {
+      const codeInput = document.getElementById('shareCode').value.trim();
+      const apiUrl = document.getElementById('apiUrl').value.trim();
+      const btn = document.getElementById('importBtn');
+
+      if (!codeInput) { setStatus('Share code를 입력하세요', 'error'); return; }
+
+      // Extract share code from URL if needed
+      let shareCode = codeInput;
+      const urlMatch = codeInput.match(/\/share\/([^/?]+)/);
+      if (urlMatch) shareCode = urlMatch[1];
+
+      btn.disabled = true;
+      setStatus('데이터를 가져오는 중...', '');
+
+      parent.postMessage({ pluginMessage: { type: 'import', shareCode, apiUrl } }, '*');
+    }
+
+    window.onmessage = (event) => {
+      const msg = event.data.pluginMessage;
+      if (msg.type === 'status') setStatus(msg.text, msg.style || '');
+      if (msg.type === 'done') {
+        setStatus(msg.text, 'success');
+        document.getElementById('importBtn').disabled = false;
+      }
+      if (msg.type === 'error') {
+        setStatus(msg.text, 'error');
+        document.getElementById('importBtn').disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>

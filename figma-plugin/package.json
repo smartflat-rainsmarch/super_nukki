@@ -1,0 +1,11 @@
+{
+  "name": "ui2psd-figma-plugin",
+  "version": "1.0.0",
+  "description": "Import UI2PSD layer data into Figma",
+  "scripts": {
+    "build": "echo 'No build step needed - code.js is plain JS'"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.100.0"
+  }
+}

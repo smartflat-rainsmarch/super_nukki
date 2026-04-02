@@ -97,6 +97,16 @@
     "notice": "결과물은 실무용 편집 초안입니다. AI 분석 특성상 완벽한 복원을 보장하지 않습니다.",
     "rights": "UI2PSD Studio. All rights reserved."
   },
+  "figma": {
+    "title": "Figma로 보내기",
+    "description": "변환 결과를 Figma에서 바로 편집할 수 있습니다. 공유 코드를 생성하면 Figma Plugin에서 import할 수 있습니다.",
+    "generateCode": "공유 코드 생성",
+    "step1": "1. Figma에서 UI2PSD Plugin을 설치하세요",
+    "step2": "2. Plugin에서 아래 코드를 입력하세요",
+    "copy": "복사",
+    "copied": "복사됨!",
+    "expiresIn": "이 코드는 1시간 동안 유효합니다"
+  },
   "common": {
     "loading": "로딩 중...",
     "error": "오류가 발생했습니다."

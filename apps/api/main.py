@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from config import settings
 
 from error_handlers import register_error_handlers
-from routers import admin, api_keys, assets, auth, batch, billing, export, model_config, projects_list, sla, sso, teams, upload, project, download, usage
+from routers import admin, api_keys, assets, auth, batch, billing, export, model_config, projects_list, share, sla, sso, teams, upload, project, download, usage
 
 app = FastAPI(
     title="UI2PSD Studio API",
@@ -15,7 +15,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "https://www.figma.com", "null"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-API-Key"],
@@ -30,6 +30,7 @@ app.include_router(billing.router)
 app.include_router(export.router)
 app.include_router(model_config.router)
 app.include_router(projects_list.router)
+app.include_router(share.router)
 app.include_router(sla.router)
 app.include_router(sso.router)
 app.include_router(teams.router)

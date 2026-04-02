@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { FigmaShareModal } from "@/components/figma-share-modal";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -50,6 +51,7 @@ export default function ProjectPage() {
   const [status, setStatus] = useState<ProjectStatus | null>(null);
   const [result, setResult] = useState<ProjectResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showFigmaModal, setShowFigmaModal] = useState(false);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -135,13 +137,19 @@ export default function ProjectPage() {
             </div>
           )}
 
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-3">
             <a
               href={`${API_BASE}/api/download/${id}`}
               className="rounded-lg bg-blue-600 px-6 py-3 text-white transition hover:bg-blue-700"
             >
               PSD 다운로드
             </a>
+            <button
+              onClick={() => setShowFigmaModal(true)}
+              className="rounded-lg bg-purple-600 px-6 py-3 text-white transition hover:bg-purple-700"
+            >
+              Figma로 보내기
+            </button>
             <a
               href={`/project/${id}/edit`}
               className="rounded-lg border border-gray-300 px-6 py-3 text-gray-700 transition hover:bg-gray-50"
@@ -189,6 +197,10 @@ export default function ProjectPage() {
             </div>
           )}
         </div>
+      )}
+
+      {showFigmaModal && (
+        <FigmaShareModal projectId={id} onClose={() => setShowFigmaModal(false)} />
       )}
     </main>
   );

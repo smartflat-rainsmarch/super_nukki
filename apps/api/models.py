@@ -155,6 +155,18 @@ class EmailVerification(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
+class FigmaShare(Base):
+    __tablename__ = "figma_shares"
+
+    id = Column(UUIDString, primary_key=True, default=new_uuid)
+    project_id = Column(UUIDString, ForeignKey("projects.id"), nullable=False)
+    share_code = Column(String(32), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    project = relationship("Project")
+
+
 class IpUsage(Base):
     __tablename__ = "ip_usage"
 

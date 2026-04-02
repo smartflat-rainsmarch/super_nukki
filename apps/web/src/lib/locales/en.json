@@ -97,6 +97,16 @@
     "notice": "Results are production-ready editing drafts. AI analysis does not guarantee perfect restoration.",
     "rights": "UI2PSD Studio. All rights reserved."
   },
+  "figma": {
+    "title": "Send to Figma",
+    "description": "Edit your results directly in Figma. Generate a share code to import via the Figma Plugin.",
+    "generateCode": "Generate Share Code",
+    "step1": "1. Install the UI2PSD Plugin in Figma",
+    "step2": "2. Enter the code below in the Plugin",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "expiresIn": "This code is valid for 1 hour"
+  },
   "common": {
     "loading": "Loading...",
     "error": "An error occurred."
