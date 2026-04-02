@@ -437,6 +437,62 @@ export default function EditPage() {
     return result;
   }
 
+  // --- Render layer tree item ---
+  function renderLayerItem(layer: LayerData, depth: number): React.ReactNode {
+    const isSelected = selectedIds.has(layer.id);
+    const hasChildren = layer.children && layer.children.length > 0;
+    return (
+      <div key={layer.id}>
+        <div
+          onClick={(e) => handleSelectLayer(layer.id, e.ctrlKey || e.metaKey)}
+          onDoubleClick={(e) => { e.stopPropagation(); handleStartRename(layer.id); }}
+          onContextMenu={(e) => handleContextMenu(e, layer.id)}
+          className={`flex cursor-pointer items-center gap-2 rounded-lg py-2 transition ${isSelected ? "bg-blue-50 ring-2 ring-blue-300" : "hover:bg-gray-50"} ${!layer.visible ? "opacity-40" : ""}`}
+          style={{ paddingLeft: `${12 + depth * 16}px`, paddingRight: "12px" }}
+        >
+          {hasChildren ? (
+            <button type="button" onClick={(e) => { e.stopPropagation(); handleToggleExpand(layer.id); }} className="flex h-5 w-5 shrink-0 items-center justify-center text-xs text-gray-400">
+              {layer.expanded ? "\u25BC" : "\u25B6"}
+            </button>
+          ) : (<span className="w-5 shrink-0" />)}
+
+          <button type="button" onClick={(e) => { e.stopPropagation(); handleToggleVisibility(layer.id); }} className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-xs hover:bg-gray-200" title={layer.visible ? "Hide" : "Show"}>
+            {layer.visible ? (
+              <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+            ) : (
+              <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+            )}
+          </button>
+
+          {layer.image_url && (
+            <div className="h-8 w-8 shrink-0 overflow-hidden rounded border bg-gray-50">
+              <img src={`${API_BASE}${layer.image_url}`} alt="" className="h-full w-full object-contain" />
+            </div>
+          )}
+
+          <div className="flex-1 min-w-0">
+            {renamingId === layer.id ? (
+              <input ref={renameInputRef} type="text" value={renameValue} onChange={(e) => setRenameValue(e.target.value)} onBlur={handleFinishRename} onKeyDown={(e) => { if (e.key === "Enter") handleFinishRename(); if (e.key === "Escape") setRenamingId(null); }} onClick={(e) => e.stopPropagation()} className="w-full rounded border border-blue-400 px-1.5 py-0.5 text-xs focus:outline-none" />
+            ) : (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${TYPE_COLORS[layer.type] ?? "bg-gray-100 text-gray-600"}`}>{layer.type}</span>
+                  {hasChildren && <span className="text-[10px] text-amber-600">folder</span>}
+                  <span className="truncate text-xs text-gray-700">{layer.name}</span>
+                </div>
+                {layer.text_content && <p className="mt-0.5 truncate text-xs text-gray-400">{layer.text_content}</p>}
+              </>
+            )}
+          </div>
+          <span className="text-[10px] text-gray-300">{layer.z_index}</span>
+        </div>
+        {hasChildren && layer.expanded && (
+          <div>{layer.children.map((c) => renderLayerItem(c, depth + 1))}</div>
+        )}
+      </div>
+    );
+  }
+
   // --- Render ---
   if (loading) {
     return (
@@ -580,115 +636,7 @@ export default function EditPage() {
           <h2 className="text-lg font-semibold">레이어 목록</h2>
 
           <div className="max-h-[50vh] space-y-1 overflow-y-auto rounded-xl bg-white p-3 shadow">
-            {reversedLayers.map((layer) => (
-              <LayerTreeItem key={layer.id} layer={layer} depth={0} />
-            ))}
-          </div>
-
-          {/* Tree item component defined inline */}
-          {false && <div />}
-        </div>
-      </div>
-      {/* NOTE: LayerTreeItem is defined below as a nested render function */}
-      {null}
-    </main>
-  );
-
-  // --- Layer Tree Item (defined as render helper) ---
-  function LayerTreeItem({ layer, depth }: { layer: LayerData; depth: number }) {
-    const isSelected = selectedIds.has(layer.id);
-    const hasChildren = layer.children && layer.children.length > 0;
-
-    return (
-      <>
-        <div
-          onClick={(e) => handleSelectLayer(layer.id, e.ctrlKey || e.metaKey)}
-          onDoubleClick={(e) => { e.stopPropagation(); handleStartRename(layer.id); }}
-          onContextMenu={(e) => handleContextMenu(e, layer.id)}
-          className={`flex cursor-pointer items-center gap-2 rounded-lg py-2 transition ${
-            isSelected ? "bg-blue-50 ring-2 ring-blue-300" : "hover:bg-gray-50"
-          } ${!layer.visible ? "opacity-40" : ""}`}
-          style={{ paddingLeft: `${12 + depth * 16}px`, paddingRight: "12px" }}
-        >
-          {/* Folder toggle */}
-          {hasChildren ? (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); handleToggleExpand(layer.id); }}
-              className="flex h-5 w-5 shrink-0 items-center justify-center text-xs text-gray-400"
-            >
-              {layer.expanded ? "▼" : "▶"}
-            </button>
-          ) : (
-            <span className="w-5 shrink-0" />
-          )}
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggleVisibility(layer.id);
-                    }}
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-xs hover:bg-gray-200"
-                    title={layer.visible ? "숨기기" : "보이기"}
-                  >
-                    {layer.visible ? (
-                      <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    ) : (
-                      <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                      </svg>
-                    )}
-                  </button>
-
-                  {/* Thumbnail */}
-                  {layer.image_url && (
-                    <div className="h-8 w-8 shrink-0 overflow-hidden rounded border bg-gray-50">
-                      <img
-                        src={`${API_BASE}${layer.image_url}`}
-                        alt=""
-                        className="h-full w-full object-contain"
-                      />
-                    </div>
-                  )}
-
-                  <div className="flex-1 min-w-0">
-                    {renamingId === layer.id ? (
-                      <input
-                        ref={renameInputRef}
-                        type="text"
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
-                        onBlur={handleFinishRename}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleFinishRename();
-                          if (e.key === "Escape") setRenamingId(null);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-full rounded border border-blue-400 px-1.5 py-0.5 text-xs focus:outline-none"
-                      />
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-1.5">
-                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${TYPE_COLORS[layer.type] ?? "bg-gray-100 text-gray-600"}`}>
-                            {layer.type}
-                          </span>
-                          <span className="truncate text-xs text-gray-700">{layer.name}</span>
-                        </div>
-                        {layer.text_content && (
-                          <p className="mt-0.5 truncate text-xs text-gray-400">{layer.text_content}</p>
-                        )}
-                      </>
-                    )}
-                  </div>
-
-                  <span className="text-[10px] text-gray-300">{layer.z_index}</span>
-                </div>
-              );
-            })}
+            {reversedLayers.map((layer) => renderLayerItem(layer, 0))}
           </div>
 
           {/* Selected Layer Controls */}
