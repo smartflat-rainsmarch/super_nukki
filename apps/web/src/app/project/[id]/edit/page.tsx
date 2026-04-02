@@ -24,6 +24,9 @@ interface LayerData {
   layer_kind: "editable" | "raster";
   visible: boolean;
   name: string;
+  parent_id: string | null;
+  children: LayerData[];
+  expanded: boolean;
 }
 
 interface CanvasSize {
@@ -134,11 +137,17 @@ export default function EditPage() {
         }
         const data = await res.json();
         if (data.canvas_size) setCanvasSize(data.canvas_size);
-        const initial = (data.layers ?? []).map((l: Omit<LayerData, "visible" | "name">, i: number) => ({
-          ...l,
-          visible: true,
-          name: l.text_content || `${l.type}_${i}`,
-        }));
+        function mapLayer(l: any, i: number): LayerData {
+          return {
+            ...l,
+            visible: true,
+            name: l.text_content || `${l.type}_${i}`,
+            parent_id: l.parent_id || null,
+            children: (l.children || []).map((c: any, ci: number) => mapLayer(c, ci)),
+            expanded: false,
+          };
+        }
+        const initial = (data.layers ?? []).map(mapLayer);
         setLayers(initial);
         setHistory([initial]);
         setHistoryIndex(0);
@@ -368,6 +377,66 @@ export default function EditPage() {
     }
   }, [layers, selectedIds]);
 
+  // --- Decompose (re-convert layer) ---
+  const [decomposing, setDecomposing] = useState(false);
+
+  const handleDecompose = useCallback(async () => {
+    setContextMenu(null);
+    const targetId = [...selectedIds][0];
+    if (!targetId) return;
+
+    setDecomposing(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/project/${id}/layer/${targetId}/decompose`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: "Failed" }));
+        alert(err.detail);
+        return;
+      }
+      // Reload data to get updated tree
+      const dataRes = await fetch(`${API_BASE}/api/project/${id}/result`, { headers: authHeaders() });
+      if (dataRes.ok) {
+        const data = await dataRes.json();
+        function mapLayer(l: any, i: number): LayerData {
+          return { ...l, visible: true, name: l.text_content || `${l.type}_${i}`, parent_id: l.parent_id || null, children: (l.children || []).map((c: any, ci: number) => mapLayer(c, ci)), expanded: true };
+        }
+        const updated = (data.layers ?? []).map(mapLayer);
+        setLayers(updated);
+        pushHistory(updated);
+      }
+    } catch {
+      alert("레이어 변환에 실패했습니다.");
+    } finally {
+      setDecomposing(false);
+    }
+  }, [selectedIds, id, pushHistory]);
+
+  // --- Toggle expand ---
+  const handleToggleExpand = useCallback((layerId: string) => {
+    function toggleInTree(items: LayerData[]): LayerData[] {
+      return items.map((l) => {
+        if (l.id === layerId) return { ...l, expanded: !l.expanded };
+        if (l.children.length > 0) return { ...l, children: toggleInTree(l.children) };
+        return l;
+      });
+    }
+    setLayers(toggleInTree);
+  }, []);
+
+  // --- Flatten for canvas rendering ---
+  function flattenLayers(items: LayerData[]): LayerData[] {
+    const result: LayerData[] = [];
+    for (const item of items) {
+      result.push(item);
+      if (item.children.length > 0) {
+        result.push(...flattenLayers(item.children));
+      }
+    }
+    return result;
+  }
+
   // --- Render ---
   if (loading) {
     return (
@@ -387,10 +456,11 @@ export default function EditPage() {
 
   const displayW = canvasSize.width * displayScale;
   const displayH = canvasSize.height * displayScale;
-  const sortedLayers = [...layers].sort((a, b) => a.z_index - b.z_index);
+  const allFlat = flattenLayers(layers);
+  const sortedLayers = [...allFlat].sort((a, b) => a.z_index - b.z_index);
   const reversedLayers = [...layers].sort((a, b) => b.z_index - a.z_index);
 
-  const firstSelected = layers.find((l) => selectedIds.has(l.id));
+  const firstSelected = allFlat.find((l) => selectedIds.has(l.id));
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
 
@@ -510,21 +580,49 @@ export default function EditPage() {
           <h2 className="text-lg font-semibold">레이어 목록</h2>
 
           <div className="max-h-[50vh] space-y-1 overflow-y-auto rounded-xl bg-white p-3 shadow">
-            {reversedLayers.map((layer) => {
-              const isSelected = selectedIds.has(layer.id);
-              return (
-                <div
-                  key={layer.id}
-                  onClick={(e) => handleSelectLayer(layer.id, e.ctrlKey || e.metaKey)}
-                  onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    handleStartRename(layer.id);
-                  }}
-                  onContextMenu={(e) => handleContextMenu(e, layer.id)}
-                  className={`flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 transition ${
-                    isSelected ? "bg-blue-50 ring-2 ring-blue-300" : "hover:bg-gray-50"
-                  } ${!layer.visible ? "opacity-40" : ""}`}
-                >
+            {reversedLayers.map((layer) => (
+              <LayerTreeItem key={layer.id} layer={layer} depth={0} />
+            ))}
+          </div>
+
+          {/* Tree item component defined inline */}
+          {false && <div />}
+        </div>
+      </div>
+      {/* NOTE: LayerTreeItem is defined below as a nested render function */}
+      {null}
+    </main>
+  );
+
+  // --- Layer Tree Item (defined as render helper) ---
+  function LayerTreeItem({ layer, depth }: { layer: LayerData; depth: number }) {
+    const isSelected = selectedIds.has(layer.id);
+    const hasChildren = layer.children && layer.children.length > 0;
+
+    return (
+      <>
+        <div
+          onClick={(e) => handleSelectLayer(layer.id, e.ctrlKey || e.metaKey)}
+          onDoubleClick={(e) => { e.stopPropagation(); handleStartRename(layer.id); }}
+          onContextMenu={(e) => handleContextMenu(e, layer.id)}
+          className={`flex cursor-pointer items-center gap-2 rounded-lg py-2 transition ${
+            isSelected ? "bg-blue-50 ring-2 ring-blue-300" : "hover:bg-gray-50"
+          } ${!layer.visible ? "opacity-40" : ""}`}
+          style={{ paddingLeft: `${12 + depth * 16}px`, paddingRight: "12px" }}
+        >
+          {/* Folder toggle */}
+          {hasChildren ? (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); handleToggleExpand(layer.id); }}
+              className="flex h-5 w-5 shrink-0 items-center justify-center text-xs text-gray-400"
+            >
+              {layer.expanded ? "▼" : "▶"}
+            </button>
+          ) : (
+            <span className="w-5 shrink-0" />
+          )}
+
                   <button
                     type="button"
                     onClick={(e) => {
@@ -699,6 +797,18 @@ export default function EditPage() {
               ? `${selectedIds.size}개 이미지로 다운로드`
               : "이미지로 다운로드"}
           </button>
+          {selectedIds.size === 1 && (
+            <button
+              onClick={handleDecompose}
+              disabled={decomposing}
+              className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+              </svg>
+              {decomposing ? "변환 중..." : "레이어 변환하기"}
+            </button>
+          )}
         </div>
       )}
     </main>

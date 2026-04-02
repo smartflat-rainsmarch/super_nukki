@@ -92,8 +92,10 @@ class Layer(Base):
     image_url = Column(Text, nullable=True)
     text_content = Column(Text, nullable=True)
     z_index = Column(Integer, default=0, nullable=False)
+    parent_id = Column(UUIDString, ForeignKey("layers.id"), nullable=True)
 
     project = relationship("Project", back_populates="layers")
+    children = relationship("Layer", foreign_keys=[parent_id], viewonly=True)
 
 
 class Job(Base):
