@@ -176,7 +176,10 @@ def _check_ip_limit(request: Request, db: Session):
         return  # first use, will be created in _increment
 
     now = datetime.now(timezone.utc)
-    if record.reset_date and now >= record.reset_date:
+    rd = record.reset_date
+    if rd and rd.tzinfo is None:
+        rd = rd.replace(tzinfo=timezone.utc)
+    if rd and now >= rd:
         record.usage_count = 0
         next_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         if now.month == 12:
