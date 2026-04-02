@@ -225,9 +225,14 @@ export default function EditPage() {
   }, []);
 
   const handleToggleVisibility = useCallback((layerId: string) => {
-    updateLayers((prev) =>
-      prev.map((l) => (l.id === layerId ? { ...l, visible: !l.visible } : l)),
-    );
+    function toggle(items: LayerData[]): LayerData[] {
+      return items.map((l) => {
+        if (l.id === layerId) return { ...l, visible: !l.visible };
+        if (l.children.length > 0) return { ...l, children: toggle(l.children) };
+        return l;
+      });
+    }
+    updateLayers(toggle);
   }, [updateLayers]);
 
   // --- Multi drag ---
@@ -274,20 +279,17 @@ export default function EditPage() {
       const orig = dragStart.current.origPositions;
 
       skipHistoryRef.current = true;
-      setLayers((prev) =>
-        prev.map((l) => {
+      function moveLayers(items: LayerData[]): LayerData[] {
+        return items.map((l) => {
           const o = orig.get(l.id);
-          if (!o || !l.position) return l;
-          return {
-            ...l,
-            position: {
-              ...l.position,
-              x: Math.round(o.x + dx),
-              y: Math.round(o.y + dy),
-            },
-          };
-        }),
-      );
+          if (o && l.position) {
+            return { ...l, position: { ...l.position, x: Math.round(o.x + dx), y: Math.round(o.y + dy) }, children: moveLayers(l.children) };
+          }
+          if (l.children.length > 0) return { ...l, children: moveLayers(l.children) };
+          return l;
+        });
+      }
+      setLayers(moveLayers);
       skipHistoryRef.current = false;
     };
 
@@ -312,13 +314,14 @@ export default function EditPage() {
   // --- Position/Size input ---
   const handlePositionChange = useCallback(
     (field: keyof Position, value: number) => {
-      updateLayers((prev) =>
-        prev.map((l) =>
-          selectedIds.has(l.id) && l.position
-            ? { ...l, position: { ...l.position, [field]: value } }
-            : l,
-        ),
-      );
+      function update(items: LayerData[]): LayerData[] {
+        return items.map((l) => {
+          if (selectedIds.has(l.id) && l.position) return { ...l, position: { ...l.position, [field]: value } };
+          if (l.children.length > 0) return { ...l, children: update(l.children) };
+          return l;
+        });
+      }
+      updateLayers(update);
     },
     [selectedIds, updateLayers],
   );
@@ -350,9 +353,14 @@ export default function EditPage() {
 
   const handleFinishRename = useCallback(() => {
     if (renamingId && renameValue.trim()) {
-      updateLayers((prev) =>
-        prev.map((l) => (l.id === renamingId ? { ...l, name: renameValue.trim() } : l)),
-      );
+      function rename(items: LayerData[]): LayerData[] {
+        return items.map((l) => {
+          if (l.id === renamingId) return { ...l, name: renameValue.trim() };
+          if (l.children.length > 0) return { ...l, children: rename(l.children) };
+          return l;
+        });
+      }
+      updateLayers(rename);
     }
     setRenamingId(null);
   }, [renamingId, renameValue, updateLayers]);
