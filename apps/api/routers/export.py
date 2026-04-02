@@ -46,6 +46,9 @@ async def create_figma_share(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    if project.user_id and str(project.user_id) != str(user.id):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
     if project.status != "done":
         raise HTTPException(status_code=400, detail="Project not complete")
 

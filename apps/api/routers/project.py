@@ -70,7 +70,9 @@ async def get_project_result(project_id: str, db: Session = Depends(get_db)):
     psd_url = f"/api/download/{project_id}" if project.status == "done" else None
     canvas_size = _get_canvas_size(str(pid))
 
-    def layer_to_dict(layer):
+    def layer_to_dict(layer, depth=0):
+        if depth > 3:
+            return {"id": str(layer.id), "type": layer.type, "position": layer.position, "image_url": layer.image_url, "text_content": layer.text_content, "z_index": layer.z_index, "layer_kind": "editable" if layer.type == "text" else "raster", "parent_id": str(layer.parent_id) if layer.parent_id else None, "children": []}
         children = (
             db.query(Layer)
             .filter(Layer.parent_id == layer.id)
@@ -86,7 +88,7 @@ async def get_project_result(project_id: str, db: Session = Depends(get_db)):
             "z_index": layer.z_index,
             "layer_kind": "editable" if layer.type == "text" else "raster",
             "parent_id": str(layer.parent_id) if layer.parent_id else None,
-            "children": [layer_to_dict(c) for c in children],
+            "children": [layer_to_dict(c, depth + 1) for c in children],
         }
 
     return {
@@ -105,6 +107,7 @@ async def decompose_layer(
     project_id: str,
     layer_id: str,
     db: Session = Depends(get_db),
+    user: User | None = Depends(get_current_user),
 ):
     layer = db.query(Layer).filter(Layer.id == layer_id, Layer.project_id == project_id).first()
     if not layer:
@@ -118,8 +121,12 @@ async def decompose_layer(
     if existing_children > 0:
         raise HTTPException(status_code=400, detail="Layer already decomposed")
 
-    # Resolve image path
-    image_path = Path(settings.storage_path) / layer.image_url.lstrip("/storage/")
+    # Resolve image path safely
+    url_path = layer.image_url.replace("/storage/", "", 1) if layer.image_url.startswith("/storage/") else layer.image_url
+    image_path = (Path(settings.storage_path) / url_path).resolve()
+    storage_root = Path(settings.storage_path).resolve()
+    if not str(image_path).startswith(str(storage_root)):
+        raise HTTPException(status_code=400, detail="Invalid layer path")
     if not image_path.exists():
         raise HTTPException(status_code=404, detail="Layer image file not found")
 
@@ -131,7 +138,7 @@ async def decompose_layer(
         from engine.pipeline import run_pipeline
         result = run_pipeline(str(image_path), str(sub_output_dir))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Decompose failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="레이어 변환에 실패했습니다. 다시 시도해주세요.")
 
     # Read manifest and create child layers
     manifest_path = sub_output_dir / "layers" / "manifest.json"
