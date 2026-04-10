@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { authHeaders } from "@/lib/auth";
+import { removeElement, removeElementsBatch } from "@/lib/api";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const MAX_HISTORY = 50;
 
 interface Position {
@@ -384,6 +385,98 @@ export default function EditPage() {
       }
     }
   }, [layers, selectedIds]);
+
+  // --- Remove element (inpaint background) ---
+  const [removing, setRemoving] = useState(false);
+  const [removeProgress, setRemoveProgress] = useState("");
+  const [lastQuality, setLastQuality] = useState<number | null>(null);
+
+  const reloadLayers = useCallback(async () => {
+    const dataRes = await fetch(`${API_BASE}/api/project/${id}/result`, { headers: authHeaders() });
+    if (dataRes.ok) {
+      const result = await dataRes.json();
+      function mapLayer(l: any, i: number): LayerData {
+        return { ...l, visible: true, name: l.text_content || `${l.type}_${i}`, parent_id: l.parent_id || null, children: (l.children || []).map((c: any, ci: number) => mapLayer(c, ci)), expanded: true };
+      }
+      const updated = (result.layers ?? []).map(mapLayer);
+      setLayers(updated);
+      pushHistory(updated);
+      setSelectedIds(new Set());
+    }
+  }, [id, pushHistory]);
+
+  const handleRemoveElement = useCallback(async () => {
+    setContextMenu(null);
+    const targetId = [...selectedIds][0];
+    if (!targetId) return;
+
+    const flat = flattenLayers(layers);
+    const target = flat.find((l) => l.id === targetId);
+    if (!target || target.type === "background") return;
+
+    if (!confirm("이 요소를 제거하고 배경을 복원하시겠습니까?")) return;
+
+    setRemoving(true);
+    setRemoveProgress("제거 중...");
+    try {
+      let data;
+      try {
+        data = await removeElement(id, targetId);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Failed");
+        return;
+      }
+
+      setLastQuality(data.quality_score);
+
+      if (data.warning) {
+        alert(`복원 완료 (품질: ${Math.round(data.quality_score * 100)}%)\n${data.warning}`);
+      }
+
+      await reloadLayers();
+    } catch {
+      alert("요소 제거에 실패했습니다.");
+    } finally {
+      setRemoving(false);
+      setRemoveProgress("");
+    }
+  }, [selectedIds, id, layers, reloadLayers]);
+
+  const handleBatchRemove = useCallback(async () => {
+    setContextMenu(null);
+    const flat = flattenLayers(layers);
+    const removableIds = [...selectedIds].filter((sid) => {
+      const l = flat.find((f) => f.id === sid);
+      return l && l.type !== "background";
+    });
+
+    if (removableIds.length === 0) return;
+
+    if (!confirm(`${removableIds.length}개 요소를 제거하고 배경을 복원하시겠습니까?`)) return;
+
+    setRemoving(true);
+    try {
+      setRemoveProgress(`제거 중... (0/${removableIds.length})`);
+
+      const data = await removeElementsBatch(id, removableIds);
+
+      const avgQuality = data.results.reduce((sum, r) => sum + r.quality_score, 0) / data.results.length;
+      setLastQuality(avgQuality);
+
+      const warnings = data.results.filter((r) => r.warning).map((r) => r.warning);
+      if (warnings.length > 0) {
+        alert(`복원 완료 (평균 품질: ${Math.round(avgQuality * 100)}%)\n${warnings.join("\n")}`);
+      }
+
+      setRemoveProgress("완료!");
+      await reloadLayers();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "배치 제거에 실패했습니다.");
+    } finally {
+      setRemoving(false);
+      setRemoveProgress("");
+    }
+  }, [selectedIds, id, layers, reloadLayers]);
 
   // --- Decompose (re-convert layer) ---
   const [decomposing, setDecomposing] = useState(false);
@@ -765,6 +858,77 @@ export default function EditPage() {
               {decomposing ? "변환 중..." : "레이어 변환하기"}
             </button>
           )}
+          {selectedIds.size === 1 && (() => {
+            const sel = flattenLayers(layers).find((l) => selectedIds.has(l.id));
+            if (sel && sel.type !== "background") {
+              return (
+                <button
+                  onClick={handleRemoveElement}
+                  disabled={removing}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  {removing ? "제거 중..." : "요소 제거 (배경 복원)"}
+                </button>
+              );
+            }
+            return null;
+          })()}
+          {selectedIds.size > 1 && (() => {
+            const flat = flattenLayers(layers);
+            const removable = [...selectedIds].filter((sid) => {
+              const l = flat.find((f) => f.id === sid);
+              return l && l.type !== "background";
+            });
+            if (removable.length > 0) {
+              return (
+                <button
+                  onClick={handleBatchRemove}
+                  disabled={removing}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  {removing ? removeProgress : `${removable.length}개 요소 제거 (배경 복원)`}
+                </button>
+              );
+            }
+            return null;
+          })()}
+        </div>
+      )}
+
+      {/* Remove progress overlay */}
+      {removing && (
+        <div className="fixed bottom-6 right-6 z-50 rounded-lg bg-gray-900 px-4 py-3 text-sm text-white shadow-lg">
+          <div className="flex items-center gap-2">
+            <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            {removeProgress}
+          </div>
+        </div>
+      )}
+
+      {/* Quality badge */}
+      {!removing && lastQuality !== null && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm shadow-lg border">
+          <span className={`inline-block h-3 w-3 rounded-full ${
+            lastQuality > 0.8 ? "bg-green-500" : lastQuality > 0.5 ? "bg-yellow-500" : "bg-red-500"
+          }`} />
+          <span className="text-gray-700">
+            복원 품질: {Math.round(lastQuality * 100)}%
+          </span>
+          <button
+            onClick={() => setLastQuality(null)}
+            className="ml-2 text-gray-400 hover:text-gray-600"
+          >
+            x
+          </button>
         </div>
       )}
     </main>

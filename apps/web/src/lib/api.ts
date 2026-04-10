@@ -64,3 +64,45 @@ export async function getProject(projectId: string): Promise<ProjectResponse> {
 export async function getUsage(): Promise<UsageResponse> {
   return apiFetch<UsageResponse>("/api/usage");
 }
+
+export interface RemoveElementResponse {
+  success: boolean;
+  background_url: string;
+  quality_score: number;
+  warning: string | null;
+}
+
+export async function removeElement(
+  projectId: string,
+  layerId: string,
+): Promise<RemoveElementResponse> {
+  return apiFetch<RemoveElementResponse>(
+    `/api/project/${projectId}/layer/${layerId}/remove`,
+    { method: "POST" },
+  );
+}
+
+export interface BatchRemoveResult {
+  layer_id: string;
+  quality_score: number;
+  warning: string | null;
+}
+
+export interface BatchRemoveResponse {
+  success: boolean;
+  results: BatchRemoveResult[];
+  background_url: string;
+}
+
+export async function removeElementsBatch(
+  projectId: string,
+  layerIds: string[],
+): Promise<BatchRemoveResponse> {
+  return apiFetch<BatchRemoveResponse>(
+    `/api/project/${projectId}/layers/remove-batch`,
+    {
+      method: "POST",
+      body: JSON.stringify({ layer_ids: layerIds }),
+    },
+  );
+}

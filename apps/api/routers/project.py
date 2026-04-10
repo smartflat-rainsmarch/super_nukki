@@ -1,15 +1,36 @@
 import json
+import time
 import uuid
 from pathlib import Path
 from uuid import UUID
 
+import cv2
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 from auth import get_current_user
 from config import settings
 from database import get_db
 from models import Job, Layer, Project, User
+
+
+class BatchRemoveRequest(BaseModel):
+    layer_ids: list[str]
+
+    @field_validator("layer_ids")
+    @classmethod
+    def validate_layer_ids(cls, v: list[str]) -> list[str]:
+        if not v:
+            raise ValueError("layer_ids must be non-empty")
+        if len(v) > 20:
+            raise ValueError("Maximum 20 layers per batch")
+        for lid in v:
+            try:
+                UUID(lid)
+            except ValueError:
+                raise ValueError(f"Invalid layer ID: {lid}")
+        return v
 
 router = APIRouter(prefix="/api", tags=["project"])
 
@@ -185,6 +206,213 @@ async def decompose_layer(
     db.commit()
 
     return {"children": children, "count": len(children)}
+
+
+@router.post("/project/{project_id}/layer/{layer_id}/remove")
+async def remove_element(
+    project_id: str,
+    layer_id: str,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_current_user),
+):
+    try:
+        pid = UUID(project_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid project ID")
+
+    try:
+        UUID(layer_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid layer ID")
+
+    project = db.query(Project).filter(Project.id == pid).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    if project.user_id and (user is None or str(user.id) != str(project.user_id)):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    layer = db.query(Layer).filter(
+        Layer.id == layer_id, Layer.project_id == project_id,
+    ).first()
+    if not layer:
+        raise HTTPException(status_code=404, detail="Layer not found")
+
+    if layer.type == "background":
+        raise HTTPException(status_code=400, detail="Cannot remove background layer")
+
+    if not layer.position:
+        raise HTTPException(status_code=400, detail="Layer has no position data")
+
+    bg_layer = db.query(Layer).filter(
+        Layer.project_id == project_id,
+        Layer.type == "background",
+        Layer.parent_id == layer.parent_id,
+    ).first()
+    if not bg_layer or not bg_layer.image_url:
+        raise HTTPException(status_code=400, detail="Background layer not found")
+
+    url_path = bg_layer.image_url.replace("/storage/", "", 1) if bg_layer.image_url.startswith("/storage/") else bg_layer.image_url
+    bg_image_path = (Path(settings.storage_path) / url_path).resolve()
+    storage_root = Path(settings.storage_path).resolve()
+    if not str(bg_image_path).startswith(str(storage_root)):
+        raise HTTPException(status_code=400, detail="Invalid background path")
+    if not bg_image_path.exists():
+        raise HTTPException(status_code=404, detail="Background image file not found")
+
+    bg_image = cv2.imread(str(bg_image_path))
+    if bg_image is None:
+        raise HTTPException(status_code=500, detail="Failed to load background image")
+
+    pos = layer.position
+    bbox = (pos.get("x", 0), pos.get("y", 0), pos.get("w", 0), pos.get("h", 0))
+
+    if bbox[2] <= 0 or bbox[3] <= 0:
+        raise HTTPException(status_code=400, detail="Layer has invalid dimensions")
+
+    from engine.inpainting_advanced import inpaint_element_removal
+    result, warning = inpaint_element_removal(bg_image, bbox)
+
+    timestamp = int(time.time() * 1000)
+    new_bg_filename = f"background_{timestamp}.png"
+    new_bg_path = bg_image_path.parent / new_bg_filename
+    cv2.imwrite(str(new_bg_path), result.restored_image)
+
+    url_dir = "/".join(bg_layer.image_url.rsplit("/", 1)[:-1])
+    new_image_url = f"{url_dir}/{new_bg_filename}"
+    bg_layer.image_url = new_image_url
+
+    def _delete_layer_tree(parent_id: str) -> None:
+        children = db.query(Layer).filter(Layer.parent_id == parent_id).all()
+        for child in children:
+            _delete_layer_tree(str(child.id))
+            db.delete(child)
+
+    _delete_layer_tree(str(layer.id))
+    db.delete(layer)
+    db.commit()
+
+    return {
+        "success": True,
+        "background_url": new_image_url,
+        "quality_score": result.quality_score,
+        "warning": warning,
+    }
+
+
+@router.post("/project/{project_id}/layers/remove-batch")
+async def remove_elements_batch(
+    project_id: str,
+    body: BatchRemoveRequest,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_current_user),
+):
+    try:
+        pid = UUID(project_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid project ID")
+
+    project = db.query(Project).filter(Project.id == pid).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    if project.user_id and (user is None or str(user.id) != str(project.user_id)):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    from engine.inpainting_advanced import inpaint_element_removal
+
+    def _delete_tree(parent_id: str) -> None:
+        children = db.query(Layer).filter(Layer.parent_id == parent_id).all()
+        for child in children:
+            _delete_tree(str(child.id))
+            db.delete(child)
+
+    # Validate all layers first before processing
+    layers_to_remove = []
+    first_parent_id = None
+
+    for lid in body.layer_ids:
+        layer = db.query(Layer).filter(
+            Layer.id == lid, Layer.project_id == project_id,
+        ).first()
+        if not layer:
+            raise HTTPException(status_code=404, detail=f"Layer {lid} not found")
+        if layer.type == "background":
+            raise HTTPException(status_code=400, detail="Cannot remove background layer")
+        if not layer.position:
+            raise HTTPException(status_code=400, detail=f"Layer {lid} has no position data")
+
+        pos = layer.position
+        bbox = (pos.get("x", 0), pos.get("y", 0), pos.get("w", 0), pos.get("h", 0))
+        if bbox[2] <= 0 or bbox[3] <= 0:
+            raise HTTPException(status_code=400, detail=f"Layer {lid} has invalid dimensions")
+
+        if first_parent_id is None:
+            first_parent_id = layer.parent_id
+        elif layer.parent_id != first_parent_id:
+            raise HTTPException(
+                status_code=400,
+                detail="All layers must belong to the same parent group",
+            )
+
+        layers_to_remove.append((layer, bbox))
+
+    # Load background
+    bg_layer = db.query(Layer).filter(
+        Layer.project_id == project_id,
+        Layer.type == "background",
+        Layer.parent_id == first_parent_id,
+    ).first()
+    if not bg_layer or not bg_layer.image_url:
+        raise HTTPException(status_code=400, detail="Background layer not found")
+
+    url_path = bg_layer.image_url.replace("/storage/", "", 1) if bg_layer.image_url.startswith("/storage/") else bg_layer.image_url
+    bg_image_path = (Path(settings.storage_path) / url_path).resolve()
+    storage_root = Path(settings.storage_path).resolve()
+    if not str(bg_image_path).startswith(str(storage_root)):
+        raise HTTPException(status_code=400, detail="Invalid background path")
+    if not bg_image_path.exists():
+        raise HTTPException(status_code=404, detail="Background image file not found")
+
+    bg_image = cv2.imread(str(bg_image_path))
+    if bg_image is None:
+        raise HTTPException(status_code=500, detail="Failed to load background image")
+
+    # Process removals sequentially
+    results = []
+    try:
+        for layer, bbox in layers_to_remove:
+            result, warning = inpaint_element_removal(bg_image, bbox)
+            bg_image = result.restored_image
+
+            results.append({
+                "layer_id": str(layer.id),
+                "quality_score": result.quality_score,
+                "warning": warning,
+            })
+
+            _delete_tree(str(layer.id))
+            db.delete(layer)
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Batch removal failed, changes rolled back")
+
+    timestamp = int(time.time() * 1000)
+    new_bg_filename = f"background_{timestamp}.png"
+    new_bg_path = bg_image_path.parent / new_bg_filename
+    cv2.imwrite(str(new_bg_path), bg_image)
+
+    url_dir = "/".join(bg_layer.image_url.rsplit("/", 1)[:-1])
+    new_image_url = f"{url_dir}/{new_bg_filename}"
+    bg_layer.image_url = new_image_url
+
+    db.commit()
+
+    return {
+        "success": True,
+        "results": results,
+        "background_url": new_image_url,
+    }
 
 
 def _get_canvas_size(project_id: str) -> dict:

@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     kakao_client_secret: str = ""
     kakao_redirect_uri: str = "http://localhost:3000/auth/callback?provider=kakao"
 
+    # AI Inpainting
+    lama_model_path: str = "./models/lama/big-lama"
+    lama_device: str = "cpu"
+
     # SMTP (Gmail)
     smtp_host: str = ""
     smtp_port: int = 587
